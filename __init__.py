@@ -10,12 +10,6 @@ from .views import boltt_generic_router
 from .views_api import boltt_api_router
 from .views_lnurl import boltt_lnurl_router
 
-logger.debug(
-    "This logged message is from boltt/__init__.py, you can debug in your "
-    "extension using 'import logger from loguru' and 'logger.debug(<thing-to-log>)'."
-)
-
-
 boltt_ext: APIRouter = APIRouter(prefix="/boltt", tags=["BOLTT"])
 boltt_ext.include_router(boltt_generic_router)
 boltt_ext.include_router(boltt_api_router)
@@ -44,10 +38,4 @@ def boltt_start():
     scheduled_tasks.append(task)
 
 
-__all__ = [
-    "db",
-    "boltt_ext",
-    "boltt_static_files",
-    "boltt_start",
-    "boltt_stop",
-]
+__all__ = ["db", "boltt_ext", "boltt_static_files", "boltt_start", "boltt_stop"]
