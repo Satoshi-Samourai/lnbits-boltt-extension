@@ -9,14 +9,14 @@ from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
 from lnbits.settings import settings
 
-from .crud import get_myextension
+from .crud import get_boltt
 from .helpers import lnurler
 
-myextension_generic_router = APIRouter()
+boltt_generic_router = APIRouter()
 
 
-def myextension_renderer():
-    return template_renderer(["myextension/templates"])
+def boltt_renderer():
+    return template_renderer(["boltt/templates"])
 
 
 #######################################
@@ -27,30 +27,30 @@ def myextension_renderer():
 # Backend admin page
 
 
-@myextension_generic_router.get("/", response_class=HTMLResponse)
+@boltt_generic_router.get("/", response_class=HTMLResponse)
 async def index(req: Request, user: User = Depends(check_user_exists)):
-    return myextension_renderer().TemplateResponse(
-        "myextension/index.html", {"request": req, "user": user.json()}
+    return boltt_renderer().TemplateResponse(
+        "boltt/index.html", {"request": req, "user": user.json()}
     )
 
 
 # Frontend shareable page
 
 
-@myextension_generic_router.get("/{myextension_id}")
-async def myextension(req: Request, myextension_id):
-    myex = await get_myextension(myextension_id)
+@boltt_generic_router.get("/{boltt_id}")
+async def boltt(req: Request, boltt_id):
+    myex = await get_boltt(boltt_id)
     if not myex:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="MyExtension does not exist."
+            status_code=HTTPStatus.NOT_FOUND, detail="boltt does not exist."
         )
-    return myextension_renderer().TemplateResponse(
-        "myextension/myextension.html",
+    return boltt_renderer().TemplateResponse(
+        "boltt/boltt.html",
         {
             "request": req,
-            "myextension_id": myextension_id,
-            "lnurlpay": lnurler(myex.id, "myextension.api_lnurl_pay", req),
-            "web_manifest": f"/myextension/manifest/{myextension_id}.webmanifest",
+            "boltt_id": boltt_id,
+            "lnurlpay": lnurler(myex.id, "boltt.api_lnurl_pay", req),
+            "web_manifest": f"/boltt/manifest/{boltt_id}.webmanifest",
         },
     )
 
@@ -58,17 +58,17 @@ async def myextension(req: Request, myextension_id):
 # Manifest for public page, customise or remove manifest completely
 
 
-@myextension_generic_router.get("/manifest/{myextension_id}.webmanifest")
-async def manifest(myextension_id: str):
-    myextension = await get_myextension(myextension_id)
-    if not myextension:
+@boltt_generic_router.get("/manifest/{boltt_id}.webmanifest")
+async def manifest(boltt_id: str):
+    boltt = await get_boltt(boltt_id)
+    if not boltt:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="MyExtension does not exist."
+            status_code=HTTPStatus.NOT_FOUND, detail="boltt does not exist."
         )
 
     return {
         "short_name": settings.lnbits_site_title,
-        "name": myextension.name + " - " + settings.lnbits_site_title,
+        "name": boltt.name + " - " + settings.lnbits_site_title,
         "icons": [
             {
                 "src": (
@@ -80,18 +80,18 @@ async def manifest(myextension_id: str):
                 "sizes": "900x900",
             }
         ],
-        "start_url": "/myextension/" + myextension_id,
+        "start_url": "/boltt/" + boltt_id,
         "background_color": "#1F2234",
         "description": "Minimal extension to build on",
         "display": "standalone",
-        "scope": "/myextension/" + myextension_id,
+        "scope": "/boltt/" + boltt_id,
         "theme_color": "#1F2234",
         "shortcuts": [
             {
-                "name": myextension.name + " - " + settings.lnbits_site_title,
-                "short_name": myextension.name,
-                "description": myextension.name + " - " + settings.lnbits_site_title,
-                "url": "/myextension/" + myextension_id,
+                "name": boltt.name + " - " + settings.lnbits_site_title,
+                "short_name": boltt.name,
+                "description": boltt.name + " - " + settings.lnbits_site_title,
+                "url": "/boltt/" + boltt_id,
             }
         ],
     }

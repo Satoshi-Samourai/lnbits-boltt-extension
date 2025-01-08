@@ -1,9 +1,9 @@
 {
   "repos": [
     {
-      "id": "myextension",
-      "organisation": "lnbits",
-      "repository": "myextension"
+      "id": "boltt",
+      "organisation": "Satoshi-Samourai",
+      "repository": "lnbits-boltt-extension"
     }
   ]
 }

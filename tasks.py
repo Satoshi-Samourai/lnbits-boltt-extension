@@ -4,7 +4,7 @@ from lnbits.core.models import Payment
 from lnbits.core.services import websocket_updater
 from lnbits.tasks import register_invoice_listener
 
-from .crud import get_myextension, update_myextension
+from .crud import get_boltt, update_boltt
 from .models import CreateMyExtensionData
 
 #######################################
@@ -16,7 +16,7 @@ from .models import CreateMyExtensionData
 
 async def wait_for_paid_invoices():
     invoice_queue = asyncio.Queue()
-    register_invoice_listener(invoice_queue, "ext_myextension")
+    register_invoice_listener(invoice_queue, "ext_boltt")
     while True:
         payment = await invoice_queue.get()
         await on_invoice_paid(payment)
@@ -26,31 +26,31 @@ async def wait_for_paid_invoices():
 
 
 async def on_invoice_paid(payment: Payment) -> None:
-    if payment.extra.get("tag") != "MyExtension":
+    if payment.extra.get("tag") != "boltt":
         return
 
-    myextension_id = payment.extra.get("myextensionId")
-    assert myextension_id, "myextensionId not set in invoice"
-    myextension = await get_myextension(myextension_id)
-    assert myextension, "MyExtension does not exist"
+    boltt_id = payment.extra.get("bolttId")
+    assert boltt_id, "bolttId not set in invoice"
+    boltt = await get_boltt(boltt_id)
+    assert boltt, "boltt does not exist"
 
     # update something in the db
     if payment.extra.get("lnurlwithdraw"):
-        total = myextension.total - payment.amount
+        total = boltt.total - payment.amount
     else:
-        total = myextension.total + payment.amount
+        total = boltt.total + payment.amount
 
-    myextension.total = total
-    await update_myextension(CreateMyExtensionData(**myextension.dict()))
+    boltt.total = total
+    await update_boltt(CreateMyExtensionData(**boltt.dict()))
 
     # here we could send some data to a websocket on
-    # wss://<your-lnbits>/api/v1/ws/<myextension_id> and then listen to it on
+    # wss://<your-lnbits>/api/v1/ws/<boltt_id> and then listen to it on
 
     some_payment_data = {
-        "name": myextension.name,
+        "name": boltt.name,
         "amount": payment.amount,
         "fee": payment.fee,
         "checking_id": payment.checking_id,
     }
 
-    await websocket_updater(myextension_id, str(some_payment_data))
+    await websocket_updater(boltt_id, str(some_payment_data))

@@ -10,59 +10,59 @@ from lnbits.decorators import require_admin_key, require_invoice_key
 from starlette.exceptions import HTTPException
 
 from .crud import (
-    create_myextension,
-    delete_myextension,
-    get_myextension,
-    get_myextensions,
-    update_myextension,
+    create_boltt,
+    delete_boltt,
+    get_boltt,
+    get_boltts,
+    update_boltt,
 )
 from .helpers import lnurler
-from .models import CreateMyExtensionData, CreatePayment, MyExtension
+from .models import CreateMyExtensionData, CreatePayment, boltt
 
-myextension_api_router = APIRouter()
+boltt_api_router = APIRouter()
 
 # Note: we add the lnurl params to returns so the links
-# are generated in the MyExtension model in models.py
+# are generated in the boltt model in models.py
 
 ## Get all the records belonging to the user
 
 
-@myextension_api_router.get("/api/v1/myex")
-async def api_myextensions(
+@boltt_api_router.get("/api/v1/myex")
+async def api_boltts(
     req: Request,  # Withoutthe lnurl stuff this wouldnt be needed
     wallet: WalletTypeInfo = Depends(require_invoice_key),
-) -> list[MyExtension]:
+) -> list[boltt]:
     wallet_ids = [wallet.wallet.id]
     user = await get_user(wallet.wallet.user)
     wallet_ids = user.wallet_ids if user else []
-    myextensions = await get_myextensions(wallet_ids)
+    boltts = await get_boltts(wallet_ids)
 
     # Populate lnurlpay and lnurlwithdraw for each instance.
     # Without the lnurl stuff this wouldnt be needed.
-    for myex in myextensions:
-        myex.lnurlpay = lnurler(myex.id, "myextension.api_lnurl_pay", req)
-        myex.lnurlwithdraw = lnurler(myex.id, "myextension.api_lnurl_withdraw", req)
+    for myex in boltts:
+        myex.lnurlpay = lnurler(myex.id, "boltt.api_lnurl_pay", req)
+        myex.lnurlwithdraw = lnurler(myex.id, "boltt.api_lnurl_withdraw", req)
 
-    return myextensions
+    return boltts
 
 
 ## Get a single record
 
 
-@myextension_api_router.get(
-    "/api/v1/myex/{myextension_id}",
+@boltt_api_router.get(
+    "/api/v1/myex/{boltt_id}",
     dependencies=[Depends(require_invoice_key)],
 )
-async def api_myextension(myextension_id: str, req: Request) -> MyExtension:
-    myex = await get_myextension(myextension_id)
+async def api_boltt(boltt_id: str, req: Request) -> boltt:
+    myex = await get_boltt(boltt_id)
     if not myex:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="MyExtension does not exist."
+            status_code=HTTPStatus.NOT_FOUND, detail="boltt does not exist."
         )
     # Populate lnurlpay and lnurlwithdraw.
     # Without the lnurl stuff this wouldnt be needed.
-    myex.lnurlpay = lnurler(myex.id, "myextension.api_lnurl_pay", req)
-    myex.lnurlwithdraw = lnurler(myex.id, "myextension.api_lnurl_withdraw", req)
+    myex.lnurlpay = lnurler(myex.id, "boltt.api_lnurl_pay", req)
+    myex.lnurlwithdraw = lnurler(myex.id, "boltt.api_lnurl_withdraw", req)
 
     return myex
 
@@ -70,18 +70,18 @@ async def api_myextension(myextension_id: str, req: Request) -> MyExtension:
 ## Create a new record
 
 
-@myextension_api_router.post("/api/v1/myex", status_code=HTTPStatus.CREATED)
-async def api_myextension_create(
+@boltt_api_router.post("/api/v1/myex", status_code=HTTPStatus.CREATED)
+async def api_boltt_create(
     req: Request,  # Withoutthe lnurl stuff this wouldnt be needed
     data: CreateMyExtensionData,
     wallet: WalletTypeInfo = Depends(require_admin_key),
-) -> MyExtension:
-    myex = await create_myextension(data)
+) -> boltt:
+    myex = await create_boltt(data)
 
     # Populate lnurlpay and lnurlwithdraw.
     # Withoutthe lnurl stuff this wouldnt be needed.
-    myex.lnurlpay = lnurler(myex.id, "myextension.api_lnurl_pay", req)
-    myex.lnurlwithdraw = lnurler(myex.id, "myextension.api_lnurl_withdraw", req)
+    myex.lnurlpay = lnurler(myex.id, "boltt.api_lnurl_pay", req)
+    myex.lnurlwithdraw = lnurler(myex.id, "boltt.api_lnurl_withdraw", req)
 
     return myex
 
@@ -89,33 +89,33 @@ async def api_myextension_create(
 ## update a record
 
 
-@myextension_api_router.put("/api/v1/myex/{myextension_id}")
-async def api_myextension_update(
+@boltt_api_router.put("/api/v1/myex/{boltt_id}")
+async def api_boltt_update(
     req: Request,  # Withoutthe lnurl stuff this wouldnt be needed
     data: CreateMyExtensionData,
-    myextension_id: str,
+    boltt_id: str,
     wallet: WalletTypeInfo = Depends(require_admin_key),
-) -> MyExtension:
-    myex = await get_myextension(myextension_id)
+) -> boltt:
+    myex = await get_boltt(boltt_id)
     if not myex:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="MyExtension does not exist."
+            status_code=HTTPStatus.NOT_FOUND, detail="boltt does not exist."
         )
 
     if wallet.wallet.id != myex.wallet:
         raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN, detail="Not your MyExtension."
+            status_code=HTTPStatus.FORBIDDEN, detail="Not your boltt."
         )
 
     for key, value in data.dict().items():
         setattr(myex, key, value)
 
-    myex = await update_myextension(data)
+    myex = await update_boltt(data)
 
     # Populate lnurlpay and lnurlwithdraw.
     # Without the lnurl stuff this wouldnt be needed.
-    myex.lnurlpay = lnurler(myex.id, "myextension.api_lnurl_pay", req)
-    myex.lnurlwithdraw = lnurler(myex.id, "myextension.api_lnurl_withdraw", req)
+    myex.lnurlpay = lnurler(myex.id, "boltt.api_lnurl_pay", req)
+    myex.lnurlwithdraw = lnurler(myex.id, "boltt.api_lnurl_withdraw", req)
 
     return myex
 
@@ -123,23 +123,23 @@ async def api_myextension_update(
 ## Delete a record
 
 
-@myextension_api_router.delete("/api/v1/myex/{myextension_id}")
-async def api_myextension_delete(
-    myextension_id: str, wallet: WalletTypeInfo = Depends(require_admin_key)
+@boltt_api_router.delete("/api/v1/myex/{boltt_id}")
+async def api_boltt_delete(
+    boltt_id: str, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
-    myex = await get_myextension(myextension_id)
+    myex = await get_boltt(boltt_id)
 
     if not myex:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="MyExtension does not exist."
+            status_code=HTTPStatus.NOT_FOUND, detail="boltt does not exist."
         )
 
     if myex.wallet != wallet.wallet.id:
         raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN, detail="Not your MyExtension."
+            status_code=HTTPStatus.FORBIDDEN, detail="Not your boltt."
         )
 
-    await delete_myextension(myextension_id)
+    await delete_boltt(boltt_id)
     return
 
 
@@ -148,26 +148,26 @@ async def api_myextension_delete(
 ## This endpoint creates a payment
 
 
-@myextension_api_router.post("/api/v1/myex/payment", status_code=HTTPStatus.CREATED)
-async def api_myextension_create_invoice(data: CreatePayment) -> dict:
-    myextension = await get_myextension(data.myextension_id)
+@boltt_api_router.post("/api/v1/myex/payment", status_code=HTTPStatus.CREATED)
+async def api_boltt_create_invoice(data: CreatePayment) -> dict:
+    boltt = await get_boltt(data.boltt_id)
 
-    if not myextension:
+    if not boltt:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="MyExtension does not exist."
+            status_code=HTTPStatus.NOT_FOUND, detail="boltt does not exist."
         )
 
     # we create a payment and add some tags,
     # so tasks.py can grab the payment once its paid
 
     payment = await create_invoice(
-        wallet_id=myextension.wallet,
+        wallet_id=boltt.wallet,
         amount=data.amount,
         memo=(
-            f"{data.memo} to {myextension.name}" if data.memo else f"{myextension.name}"
+            f"{data.memo} to {boltt.name}" if data.memo else f"{boltt.name}"
         ),
         extra={
-            "tag": "myextension",
+            "tag": "boltt",
             "amount": data.amount,
         },
     )

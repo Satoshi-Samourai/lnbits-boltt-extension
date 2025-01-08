@@ -1,146 +1,231 @@
-# Description: Extensions that use LNURL usually have a few endpoints in views_lnurl.py.
-
+import json
+import secrets
 from http import HTTPStatus
-from typing import Optional
+from urllib.parse import urlparse
 
-import shortuuid
-from fastapi import APIRouter, Query, Request
+import bolt11
+from fastapi import APIRouter, HTTPException, Query, Request
 from lnbits.core.services import create_invoice, pay_invoice
+from lnurl import encode as lnurl_encode
+from lnurl.types import LnurlPayMetadata
 from loguru import logger
+from starlette.responses import HTMLResponse
 
-from .crud import get_myextension
-
-#################################################
-########### A very simple LNURLpay ##############
-# https://github.com/lnurl/luds/blob/luds/06.md #
-#################################################
-#################################################
-
-myextension_lnurl_router = APIRouter()
-
-
-@myextension_lnurl_router.get(
-    "/api/v1/lnurl/pay/{myextension_id}",
-    status_code=HTTPStatus.OK,
-    name="myextension.api_lnurl_pay",
+from .crud import (
+    create_hit,
+    get_card,
+    get_card_by_external_id,
+    get_card_by_otp,
+    get_hit,
+    get_hits_today,
+    spend_hit,
+    update_card_counter,
+    update_card_otp,
 )
-async def api_lnurl_pay(
-    request: Request,
-    myextension_id: str,
-):
-    myextension = await get_myextension(myextension_id)
-    if not myextension:
-        return {"status": "ERROR", "reason": "No myextension found"}
-    return {
-        "callback": str(
-            request.url_for(
-                "myextension.api_lnurl_pay_callback", myextension_id=myextension_id
-            )
-        ),
-        "maxSendable": myextension.lnurlpayamount * 1000,
-        "minSendable": myextension.lnurlpayamount * 1000,
-        "metadata": '[["text/plain", "' + myextension.name + '"]]',
-        "tag": "payRequest",
-    }
+from .nxp424 import decrypt_sun, get_sun_mac
+
+boltcards_lnurl_router = APIRouter()
 
 
-@myextension_lnurl_router.get(
-    "/api/v1/lnurl/paycb/{myextension_id}",
-    status_code=HTTPStatus.OK,
-    name="myextension.api_lnurl_pay_callback",
-)
-async def api_lnurl_pay_cb(
-    request: Request,
-    myextension_id: str,
-    amount: int = Query(...),
-):
-    myextension = await get_myextension(myextension_id)
-    logger.debug(myextension)
-    if not myextension:
-        return {"status": "ERROR", "reason": "No myextension found"}
+# /boltcards/api/v1/scan?p=00000000000000000000000000000000&c=0000000000000000
+@boltcards_lnurl_router.get("/api/v1/scan/{external_id}")
+async def api_scan(p, c, request: Request, external_id: str):
+    # some wallets send everything as lower case, no bueno
+    p = p.upper()
+    c = c.upper()
+    card = None
+    counter = b""
+    card = await get_card_by_external_id(external_id)
+    if not card:
+        return {"status": "ERROR", "reason": "No card."}
+    if not card.enable:
+        return {"status": "ERROR", "reason": "Card is disabled."}
+    try:
+        card_uid, counter = decrypt_sun(bytes.fromhex(p), bytes.fromhex(card.k1))
+        if card.uid.upper() != card_uid.hex().upper():
+            return {"status": "ERROR", "reason": "Card UID mis-match."}
+        if c != get_sun_mac(card_uid, counter, bytes.fromhex(card.k2)).hex().upper():
+            return {"status": "ERROR", "reason": "CMAC does not check."}
+    except Exception:
+        return {"status": "ERROR", "reason": "Error decrypting card."}
 
-    payment = await create_invoice(
-        wallet_id=myextension.wallet,
-        amount=int(amount / 1000),
-        memo=myextension.name,
-        unhashed_description=f'[["text/plain", "{myextension.name}"]]'.encode(),
-        extra={
-            "tag": "MyExtension",
-            "myextensionId": myextension_id,
-            "extra": request.query_params.get("amount"),
-        },
+    ctr_int = int.from_bytes(counter, "little")
+
+    if ctr_int <= card.counter:
+        return {"status": "ERROR", "reason": "This link is already used."}
+
+    await update_card_counter(ctr_int, card.id)
+
+    # gathering some info for hit record
+    assert request.client
+    ip = request.client.host
+    if "x-real-ip" in request.headers:
+        ip = request.headers["x-real-ip"]
+    elif "x-forwarded-for" in request.headers:
+        ip = request.headers["x-forwarded-for"]
+
+    agent = request.headers["user-agent"] if "user-agent" in request.headers else ""
+    todays_hits = await get_hits_today(card.id)
+
+    hits_amount = 0
+    for hit in todays_hits:
+        hits_amount += hit.amount
+    if hits_amount > int(card.daily_limit):
+        return {"status": "ERROR", "reason": "Max daily limit spent."}
+    hit = await create_hit(card.id, ip, agent, card.counter, ctr_int)
+
+    # the raw lnurl
+    lnurlpay_raw = str(request.url_for("boltcards.lnurlp_response", hit_id=hit.id))
+    # bech32 encoded lnurl
+    lnurlpay_bech32 = lnurl_encode(lnurlpay_raw)
+    # create a lud17 lnurlp to support lud19, add payLink field of the withdrawRequest
+    lnurlpay_nonbech32_lud17 = lnurlpay_raw.replace("https://", "lnurlp://").replace(
+        "http://", "lnurlp://"
     )
-    return {
-        "pr": payment.bolt11,
-        "routes": [],
-        "successAction": {"tag": "message", "message": f"Paid {myextension.name}"},
-    }
 
-
-#################################################
-######## A very simple LNURLwithdraw ############
-# https://github.com/lnurl/luds/blob/luds/03.md #
-#################################################
-## withdraw is unlimited, look at withdraw ext ##
-## for more advanced withdraw options          ##
-#################################################
-
-
-@myextension_lnurl_router.get(
-    "/api/v1/lnurl/withdraw/{myextension_id}",
-    status_code=HTTPStatus.OK,
-    name="myextension.api_lnurl_withdraw",
-)
-async def api_lnurl_withdraw(
-    request: Request,
-    myextension_id: str,
-):
-    myextension = await get_myextension(myextension_id)
-    if not myextension:
-        return {"status": "ERROR", "reason": "No myextension found"}
-    k1 = shortuuid.uuid(name=myextension.id)
     return {
         "tag": "withdrawRequest",
-        "callback": str(
-            request.url_for(
-                "myextension.api_lnurl_withdraw_callback", myextension_id=myextension_id
-            )
-        ),
-        "k1": k1,
-        "defaultDescription": myextension.name,
-        "maxWithdrawable": myextension.lnurlwithdrawamount * 1000,
-        "minWithdrawable": myextension.lnurlwithdrawamount * 1000,
+        "callback": str(request.url_for("boltcards.lnurl_callback", hit_id=hit.id)),
+        "k1": hit.id,
+        "minWithdrawable": 1 * 1000,
+        "maxWithdrawable": int(card.tx_limit) * 1000,
+        "defaultDescription": f"Boltcard (refund address lnurl://{lnurlpay_bech32})",
+        "payLink": lnurlpay_nonbech32_lud17,  # LUD-19 compatibility
     }
 
 
-@myextension_lnurl_router.get(
-    "/api/v1/lnurl/withdrawcb/{myextension_id}",
+@boltcards_lnurl_router.get(
+    "/api/v1/lnurl/cb/{hit_id}",
     status_code=HTTPStatus.OK,
-    name="myextension.api_lnurl_withdraw_callback",
+    name="boltcards.lnurl_callback",
 )
-async def api_lnurl_withdraw_cb(
-    myextension_id: str,
-    pr: Optional[str] = None,
-    k1: Optional[str] = None,
+async def lnurl_callback(
+    hit_id: str,
+    k1: str = Query(None),
+    pr: str = Query(None),
 ):
-    assert k1, "k1 is required"
-    assert pr, "pr is required"
-    myextension = await get_myextension(myextension_id)
-    if not myextension:
-        return {"status": "ERROR", "reason": "No myextension found"}
+    # TODO: why no hit_id? its not used why is it passed by url?
+    logger.debug(f"TODO: why no hit_id? {hit_id}")
+    if not k1:
+        return {"status": "ERROR", "reason": "Missing K1 token"}
 
-    k1_check = shortuuid.uuid(name=myextension.id)
-    if k1_check != k1:
-        return {"status": "ERROR", "reason": "Wrong k1 check provided"}
+    hit = await get_hit(k1)
 
-    await pay_invoice(
-        wallet_id=myextension.wallet,
-        payment_request=pr,
-        max_sat=int(myextension.lnurlwithdrawamount * 1000),
-        extra={
-            "tag": "MyExtension",
-            "myextensionId": myextension_id,
-            "lnurlwithdraw": True,
-        },
+    if not hit:
+        return {
+            "status": "ERROR",
+            "reason": "Record not found for this charge (bad k1)",
+        }
+    if hit.spent:
+        return {"status": "ERROR", "reason": "Payment already claimed"}
+    if not pr:
+        return {"status": "ERROR", "reason": "Missing payment request"}
+
+    try:
+        invoice = bolt11.decode(pr)
+    except bolt11.Bolt11Exception:
+        return {"status": "ERROR", "reason": "Failed to decode payment request"}
+
+    card = await get_card(hit.card_id)
+    assert card
+    assert invoice.amount_msat, "Invoice amount is missing"
+    hit = await spend_hit(card_id=hit.id, amount=int(invoice.amount_msat / 1000))
+    assert hit
+    try:
+        await pay_invoice(
+            wallet_id=card.wallet,
+            payment_request=pr,
+            max_sat=int(card.tx_limit),
+            extra={"tag": "boltcards", "hit": hit.id},
+        )
+        return {"status": "OK"}
+    except Exception as exc:
+        return {"status": "ERROR", "reason": f"Payment failed - {exc}"}
+
+
+# /boltcards/api/v1/auth?a=00000000000000000000000000000000
+@boltcards_lnurl_router.get("/api/v1/auth")
+async def api_auth(a, request: Request):
+    if a == "00000000000000000000000000000000":
+        response = {"k0": "0" * 32, "k1": "1" * 32, "k2": "2" * 32}
+        return response
+
+    card = await get_card_by_otp(a)
+    if not card:
+        raise HTTPException(
+            detail="Card does not exist.", status_code=HTTPStatus.NOT_FOUND
+        )
+
+    new_otp = secrets.token_hex(16)
+    await update_card_otp(new_otp, card.id)
+
+    lnurlw_base = (
+        f"{urlparse(str(request.url)).netloc}/boltcards/api/v1/scan/{card.external_id}"
     )
-    return {"status": "OK"}
+
+    response = {
+        "card_name": card.card_name,
+        "id": str(1),
+        "k0": card.k0,
+        "k1": card.k1,
+        "k2": card.k2,
+        "k3": card.k1,
+        "k4": card.k2,
+        "lnurlw_base": "lnurlw://" + lnurlw_base,
+        "protocol_name": "new_bolt_card_response",
+        "protocol_version": str(1),
+    }
+
+    return response
+
+
+###############LNURLPAY REFUNDS#################
+
+
+@boltcards_lnurl_router.get(
+    "/api/v1/lnurlp/{hit_id}",
+    response_class=HTMLResponse,
+    name="boltcards.lnurlp_response",
+)
+async def lnurlp_response(req: Request, hit_id: str):
+    hit = await get_hit(hit_id)
+    assert hit
+    card = await get_card(hit.card_id)
+    assert card
+    if not hit:
+        return {"status": "ERROR", "reason": "LNURL-pay record not found."}
+    if not card.enable:
+        return {"status": "ERROR", "reason": "Card is disabled."}
+    pay_response = {
+        "tag": "payRequest",
+        "callback": str(req.url_for("boltcards.lnurlp_callback", hit_id=hit_id)),
+        "metadata": LnurlPayMetadata(json.dumps([["text/plain", "Refund"]])),
+        "minSendable": 1 * 1000,
+        "maxSendable": int(card.tx_limit) * 1000,
+    }
+    return json.dumps(pay_response)
+
+
+@boltcards_lnurl_router.get(
+    "/api/v1/lnurlp/cb/{hit_id}",
+    name="boltcards.lnurlp_callback",
+)
+async def lnurlp_callback(hit_id: str, amount: str = Query(None)):
+    hit = await get_hit(hit_id)
+    assert hit
+    card = await get_card(hit.card_id)
+    assert card
+    if not hit:
+        return {"status": "ERROR", "reason": "LNURL-pay record not found."}
+
+    payment = await create_invoice(
+        wallet_id=card.wallet,
+        amount=int(int(amount) / 1000),
+        memo=f"Refund {hit_id}",
+        unhashed_description=LnurlPayMetadata(
+            json.dumps([["text/plain", "Refund"]])
+        ).encode(),
+        extra={"refund": hit_id},
+    )
+
+    return {"pr": payment.bolt11, "routes": []}

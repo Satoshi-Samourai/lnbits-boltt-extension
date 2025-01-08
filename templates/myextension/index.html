@@ -4,14 +4,14 @@
 
 {% extends "base.html" %} {% from "macros.jinja" import window_vars with context
 %} {% block scripts %} {{ window_vars(user) }}
-<script src="{{ static_url_for('myextension/static', path='js/index.js') }}"></script>
+<script src="{{ static_url_for('boltt/static', path='js/index.js') }}"></script>
 {% endblock %} {% block page %}
 <div class="row q-col-gutter-md" id="makeItRain">
   <div class="col-12 col-md-8 col-lg-7 q-gutter-y-md">
     <q-card>
       <q-card-section>
         <q-btn unelevated color="primary" @click="formDialog.show = true"
-          >New MyExtension</q-btn
+          >New boltt</q-btn
         >
       </q-card-section>
     </q-card>
@@ -20,7 +20,7 @@
       <q-card-section>
         <div class="row items-center no-wrap q-mb-md">
           <div class="col">
-            <h5 class="text-subtitle1 q-my-none">MyExtension</h5>
+            <h5 class="text-subtitle1 q-my-none">boltt</h5>
           </div>
           <div class="col-auto">
             <q-btn flat color="grey" @click="exportCSV">Export to CSV</q-btn>
@@ -34,13 +34,13 @@
           :columns="myexTable.columns"
           v-model:pagination="myexTable.pagination"
         >
-          <myextension v-slot:header="props">
+          <boltt v-slot:header="props">
             <q-tr :props="props">
               <q-th v-for="col in props.cols" :key="col.name" :props="props">
                 ${ col.label }
               </q-th>
             </q-tr>
-          </myextension>
+          </boltt>
 
           <template v-slot:body="props">
             <q-tr :props="props">
@@ -109,7 +109,7 @@
     <q-card>
       <q-card-section>
         <h6 class="text-subtitle1 q-my-none">
-          {{SITE_TITLE}} MyExtension extension
+          {{SITE_TITLE}} boltt extension
         </h6>
         <p>
           Simple extension you can use as a base for your own extension. <br />
@@ -119,9 +119,9 @@
       <q-card-section class="q-pa-none">
         <q-separator></q-separator>
         <q-list>
-          {% include "myextension/_api_docs.html" %}
+          {% include "boltt/_api_docs.html" %}
           <q-separator></q-separator>
-          {% include "myextension/_myextension.html" %}
+          {% include "boltt/_boltt.html" %}
         </q-list>
       </q-card-section>
     </q-card>
@@ -169,7 +169,7 @@
             unelevated
             color="primary"
             type="submit"
-            >Update MyExtension</q-btn
+            >Update boltt</q-btn
           >
           <q-btn
             v-else
@@ -177,7 +177,7 @@
             color="primary"
             :disable="formDialog.data.name == null || formDialog.data.wallet == null || formDialog.data.lnurlwithdrawamount == null || formDialog.data.lnurlpayamount == null"
             type="submit"
-            >Create MyExtension</q-btn
+            >Create boltt</q-btn
           >
           <q-btn v-close-popup flat color="grey" class="q-ml-auto"
             >Cancel</q-btn

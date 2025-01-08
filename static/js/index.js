@@ -53,7 +53,7 @@ window.app = Vue.createApp({
       await LNbits.api
         .request(
           'GET',
-          '/myextension/api/v1/myex',
+          '/boltt/api/v1/myex',
           this.g.user.wallets[0].inkey
         )
         .then(response => {
@@ -82,9 +82,9 @@ window.app = Vue.createApp({
     },
 
     async updateMyExtensionForm(tempId) {
-      const myextension = _.findWhere(this.myex, {id: tempId})
+      const boltt = _.findWhere(this.myex, {id: tempId})
       this.formDialog.data = {
-        ...myextension
+        ...boltt
       }
       if (this.formDialog.data.tip_wallet != '') {
         this.formDialog.advanced.tips = true
@@ -97,7 +97,7 @@ window.app = Vue.createApp({
     async createMyExtension(wallet, data) {
       data.wallet = wallet.id
       await LNbits.api
-        .request('POST', '/myextension/api/v1/myex', wallet.adminkey, data)
+        .request('POST', '/boltt/api/v1/myex', wallet.adminkey, data)
         .then(response => {
           this.myex.push(response.data)
           this.closeFormDialog()
@@ -112,7 +112,7 @@ window.app = Vue.createApp({
       await LNbits.api
         .request(
           'PUT',
-          `/myextension/api/v1/myex/${data.id}`,
+          `/boltt/api/v1/myex/${data.id}`,
           wallet.adminkey,
           data
         )
@@ -126,22 +126,22 @@ window.app = Vue.createApp({
         })
     },
     async deleteMyExtension(tempId) {
-      var myextension = _.findWhere(this.myex, {id: tempId})
+      var boltt = _.findWhere(this.myex, {id: tempId})
       const wallet = _.findWhere(this.g.user.wallets, {
-        id: myextension.wallet
+        id: boltt.wallet
       })
       await LNbits.utils
-        .confirmDialog('Are you sure you want to delete this MyExtension?')
+        .confirmDialog('Are you sure you want to delete this boltt?')
         .onOk(function () {
           LNbits.api
             .request(
               'DELETE',
-              '/myextension/api/v1/myex/' + tempId,
+              '/boltt/api/v1/myex/' + tempId,
               wallet.adminkey
             )
             .then(() => {
               this.myex = _.reject(this.myex, function (obj) {
-                return obj.id === myextension.id
+                return obj.id === boltt.id
               })
             })
             .catch(error => {
@@ -154,22 +154,22 @@ window.app = Vue.createApp({
       await LNbits.utils.exportCSV(this.myexTable.columns, this.myex)
     },
     async itemsArray(tempId) {
-      const myextension = _.findWhere(this.myex, {id: tempId})
-      return [...myextension.itemsMap.values()]
+      const boltt = _.findWhere(this.myex, {id: tempId})
+      return [...boltt.itemsMap.values()]
     },
     async openformDialog(id) {
       const [tempId, itemId] = id.split(':')
-      const myextension = _.findWhere(this.myex, {id: tempId})
+      const boltt = _.findWhere(this.myex, {id: tempId})
       if (itemId) {
-        const item = myextension.itemsMap.get(id)
+        const item = boltt.itemsMap.get(id)
         this.formDialog.data = {
           ...item,
-          myextension: tempId
+          boltt: tempId
         }
       } else {
-        this.formDialog.data.myextension = tempId
+        this.formDialog.data.boltt = tempId
       }
-      this.formDialog.data.currency = myextension.currency
+      this.formDialog.data.currency = boltt.currency
       this.formDialog.show = true
     },
     async openUrlDialog(tempid) {
@@ -198,12 +198,12 @@ window.app = Vue.createApp({
       myex = _.findWhere(this.myex, {id: tempid})
       const wallet = _.findWhere(this.g.user.wallets, {id: myex.wallet})
       const data = {
-        myextension_id: tempid,
+        boltt_id: tempid,
         amount: this.invoiceAmount,
-        memo: 'MyExtension - ' + myex.name
+        memo: 'boltt - ' + myex.name
       }
       await LNbits.api
-        .request('POST', `/myextension/api/v1/myex/payment`, wallet.inkey, data)
+        .request('POST', `/boltt/api/v1/myex/payment`, wallet.inkey, data)
         .then(response => {
           this.qrValue = response.data.payment_request
           this.connectWebocket(wallet.inkey)
@@ -212,7 +212,7 @@ window.app = Vue.createApp({
           LNbits.utils.notifyApiError(error)
         })
     },
-    connectWebocket(myextension_id) {
+    connectWebocket(boltt_id) {
       //////////////////////////////////////////////////
       ///wait for pay action to happen and do a thing////
       ///////////////////////////////////////////////////
@@ -223,7 +223,7 @@ window.app = Vue.createApp({
           ':' +
           location.port +
           '/api/v1/ws/' +
-          myextension_id
+          boltt_id
       } else {
         localUrl =
           'ws://' +
@@ -231,7 +231,7 @@ window.app = Vue.createApp({
           ':' +
           location.port +
           '/api/v1/ws/' +
-          myextension_id
+          boltt_id
       }
       this.connection = new WebSocket(localUrl)
       this.connection.onmessage = () => {

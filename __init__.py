@@ -6,32 +6,32 @@ from loguru import logger
 
 from .crud import db
 from .tasks import wait_for_paid_invoices
-from .views import myextension_generic_router
-from .views_api import myextension_api_router
-from .views_lnurl import myextension_lnurl_router
+from .views import boltt_generic_router
+from .views_api import boltt_api_router
+from .views_lnurl import boltt_lnurl_router
 
 logger.debug(
-    "This logged message is from myextension/__init__.py, you can debug in your "
+    "This logged message is from boltt/__init__.py, you can debug in your "
     "extension using 'import logger from loguru' and 'logger.debug(<thing-to-log>)'."
 )
 
 
-myextension_ext: APIRouter = APIRouter(prefix="/myextension", tags=["MyExtension"])
-myextension_ext.include_router(myextension_generic_router)
-myextension_ext.include_router(myextension_api_router)
-myextension_ext.include_router(myextension_lnurl_router)
+boltt_ext: APIRouter = APIRouter(prefix="/boltt", tags=["BOLTT"])
+boltt_ext.include_router(boltt_generic_router)
+boltt_ext.include_router(boltt_api_router)
+boltt_ext.include_router(boltt_lnurl_router)
 
-myextension_static_files = [
+boltt_static_files = [
     {
-        "path": "/myextension/static",
-        "name": "myextension_static",
+        "path": "/boltt/static",
+        "name": "boltt_static",
     }
 ]
 
 scheduled_tasks: list[asyncio.Task] = []
 
 
-def myextension_stop():
+def boltt_stop():
     for task in scheduled_tasks:
         try:
             task.cancel()
@@ -39,15 +39,15 @@ def myextension_stop():
             logger.warning(ex)
 
 
-def myextension_start():
-    task = create_permanent_unique_task("ext_myextension", wait_for_paid_invoices)
+def boltt_start():
+    task = create_permanent_unique_task("ext_boltt", wait_for_paid_invoices)
     scheduled_tasks.append(task)
 
 
 __all__ = [
     "db",
-    "myextension_ext",
-    "myextension_static_files",
-    "myextension_start",
-    "myextension_stop",
+    "boltt_ext",
+    "boltt_static_files",
+    "boltt_start",
+    "boltt_stop",
 ]
