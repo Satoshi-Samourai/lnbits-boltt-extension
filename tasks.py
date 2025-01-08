@@ -4,8 +4,8 @@ from lnbits.core.models import Payment
 from lnbits.core.services import websocket_updater
 from lnbits.tasks import register_invoice_listener
 
-from .crud import get_boltt, update_boltt
-from .models import CreateMyExtensionData
+from .crud import get_card, update_card
+from .models import CreateCardData
 
 #######################################
 ########## RUN YOUR TASKS HERE ########
@@ -22,35 +22,20 @@ async def wait_for_paid_invoices():
         await on_invoice_paid(payment)
 
 
-# Do somethhing when an invoice related top this extension is paid
+# Do something when an invoice related to this extension is paid
 
 
 async def on_invoice_paid(payment: Payment) -> None:
     if payment.extra.get("tag") != "boltt":
         return
 
-    boltt_id = payment.extra.get("bolttId")
-    assert boltt_id, "bolttId not set in invoice"
-    boltt = await get_boltt(boltt_id)
-    assert boltt, "boltt does not exist"
+    card_id = payment.extra.get("card_id")
+    if not card_id:
+        return
 
-    # update something in the db
-    if payment.extra.get("lnurlwithdraw"):
-        total = boltt.total - payment.amount
-    else:
-        total = boltt.total + payment.amount
+    card = await get_card(card_id)
+    if not card:
+        return
 
-    boltt.total = total
-    await update_boltt(CreateMyExtensionData(**boltt.dict()))
-
-    # here we could send some data to a websocket on
-    # wss://<your-lnbits>/api/v1/ws/<boltt_id> and then listen to it on
-
-    some_payment_data = {
-        "name": boltt.name,
-        "amount": payment.amount,
-        "fee": payment.fee,
-        "checking_id": payment.checking_id,
-    }
-
-    await websocket_updater(boltt_id, str(some_payment_data))
+    # Update the websocket for the payment
+    await websocket_updater(card.wallet, str(card_id))
