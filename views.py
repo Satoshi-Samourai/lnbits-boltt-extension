@@ -1,16 +1,13 @@
-# Description: Add your page endpoints here.
-
 from http import HTTPStatus
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from lnbits.core.crud import get_wallet
 from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
-from lnbits.settings import settings
 
-from .crud import get_card, get_cards
-from .helpers import lnurler
+from .crud import get_card_by_external_id, get_hits, get_refunds
 
 boltt_generic_router = APIRouter()
 
@@ -19,75 +16,35 @@ def boltt_renderer():
     return template_renderer(["boltt/templates"])
 
 
-#######################################
-##### ADD YOUR PAGE ENDPOINTS HERE ####
-#######################################
-
-
-# Backend admin page
-
-
 @boltt_generic_router.get("/", response_class=HTMLResponse)
-async def index(req: Request, user: User = Depends(check_user_exists)):
+async def index(request: Request, user: User = Depends(check_user_exists)):
     return boltt_renderer().TemplateResponse(
-        "boltt/index.html", {"request": req, "user": user.dict()}
+        "boltt/index.html", {"request": request, "user": user.json()}
     )
-
-
-# Frontend shareable page
 
 
 @boltt_generic_router.get("/{card_id}", response_class=HTMLResponse)
-async def card(req: Request, card_id: str):
-    card = await get_card(card_id)
+async def display(request: Request, card_id: str):
+    card = await get_card_by_external_id(card_id)
     if not card:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Card does not exist."
         )
-
+    wallet = await get_wallet(card.wallet)
+    wallet_balance = 0
+    if wallet:
+        wallet_balance = wallet.balance
+    hits = await get_hits([card.id])
+    hits_json = [hit.json() for hit in hits]
+    refunds = [refund.hit_id for refund in await get_refunds([hit.id for hit in hits])]
+    card_json = card.json(exclude={"wallet"})
     return boltt_renderer().TemplateResponse(
-        "boltt/card.html",
+        "boltt/display.html",
         {
-            "request": req,
-            "card": card.dict(),
-            "web_manifest": f"/boltt/manifest/{card_id}.webmanifest",
+            "request": request,
+            "card": card_json,
+            "hits": hits_json,
+            "refunds": refunds,
+            "balance": int(wallet_balance),
         },
     )
-
-
-# Manifest for public page, customise or remove manifest completely
-
-
-@boltt_generic_router.get("/manifest/{card_id}.webmanifest")
-async def manifest(card_id: str):
-    card = await get_card(card_id)
-    if not card:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Card does not exist."
-        )
-
-    return {
-        "short_name": f"Card {card_id}",
-        "name": f"Card {card_id} - Powered by LNBITS",
-        "icons": [
-            {
-                "src": settings.web_assets.static_url + "/card.png",
-                "sizes": "192x192",
-                "type": "image/png",
-            }
-        ],
-        "start_url": f"/boltt/{card_id}",
-        "background_color": "#1F2234",
-        "description": "BOLTT extension for LNBITS",
-        "display": "standalone",
-        "theme_color": "#1F2234",
-        "categories": ["finance", "card"],
-        "shortcuts": [
-            {
-                "name": f"Card {card_id}",
-                "short_name": card_id,
-                "description": "View card details",
-                "url": f"/boltt/{card_id}",
-            }
-        ],
-    }

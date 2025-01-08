@@ -1,7 +1,7 @@
 async def m001_initial(db):
     await db.execute(
         """
-        CREATE TABLE boltcards.cards (
+        CREATE TABLE boltt.cards (
             id TEXT PRIMARY KEY UNIQUE,
             wallet TEXT NOT NULL,
             card_name TEXT NOT NULL,
@@ -27,7 +27,7 @@ async def m001_initial(db):
 
     await db.execute(
         f"""
-        CREATE TABLE boltcards.hits (
+        CREATE TABLE boltt.hits (
             id TEXT PRIMARY KEY UNIQUE,
             card_id TEXT NOT NULL,
             ip TEXT NOT NULL,
@@ -45,7 +45,7 @@ async def m001_initial(db):
 
     await db.execute(
         f"""
-        CREATE TABLE boltcards.refunds (
+        CREATE TABLE boltt.refunds (
             id TEXT PRIMARY KEY UNIQUE,
             hit_id TEXT NOT NULL,
             refund_amount {db.big_int} NOT NULL,

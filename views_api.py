@@ -1,175 +1,186 @@
-# Description: This file contains the extensions API endpoints.
-
 from http import HTTPStatus
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from lnbits.core.crud import get_user
 from lnbits.core.models import WalletTypeInfo
-from lnbits.core.services import create_invoice
 from lnbits.decorators import require_admin_key, require_invoice_key
-from starlette.exceptions import HTTPException
 
 from .crud import (
-    create_boltt,
-    delete_boltt,
-    get_boltt,
-    get_boltts,
-    update_boltt,
+    create_card,
+    delete_card,
+    enable_disable_card,
+    get_card,
+    get_card_by_uid,
+    get_cards,
+    get_hits,
+    get_refunds,
+    update_card,
 )
-from .helpers import lnurler
-from .models import CreateMyExtensionData, CreatePayment, boltt
+from .models import Card, CreateCardData, Hit, Refund
 
 boltt_api_router = APIRouter()
 
-# Note: we add the lnurl params to returns so the links
-# are generated in the boltt model in models.py
 
-## Get all the records belonging to the user
+@boltt_api_router.get("/api/v1/cards")
+async def api_cards(
+    key_info: WalletTypeInfo = Depends(require_invoice_key), all_wallets: bool = False
+) -> list[Card]:
+    wallet_ids = [key_info.wallet.id]
 
+    if all_wallets:
+        user = await get_user(key_info.wallet.user)
+        wallet_ids = user.wallet_ids if user else []
 
-@boltt_api_router.get("/api/v1/myex")
-async def api_boltts(
-    req: Request,  # Withoutthe lnurl stuff this wouldnt be needed
-    wallet: WalletTypeInfo = Depends(require_invoice_key),
-) -> list[boltt]:
-    wallet_ids = [wallet.wallet.id]
-    user = await get_user(wallet.wallet.user)
-    wallet_ids = user.wallet_ids if user else []
-    boltts = await get_boltts(wallet_ids)
-
-    # Populate lnurlpay and lnurlwithdraw for each instance.
-    # Without the lnurl stuff this wouldnt be needed.
-    for myex in boltts:
-        myex.lnurlpay = lnurler(myex.id, "boltt.api_lnurl_pay", req)
-        myex.lnurlwithdraw = lnurler(myex.id, "boltt.api_lnurl_withdraw", req)
-
-    return boltts
+    return await get_cards(wallet_ids)
 
 
-## Get a single record
+def validate_card(data: CreateCardData):
+    try:
+        if len(bytes.fromhex(data.uid)) != 7:
+            raise HTTPException(
+                detail="Invalid bytes for card uid.", status_code=HTTPStatus.BAD_REQUEST
+            )
+
+        if len(bytes.fromhex(data.k0)) != 16:
+            raise HTTPException(
+                detail="Invalid bytes for k0.", status_code=HTTPStatus.BAD_REQUEST
+            )
+
+        if len(bytes.fromhex(data.k1)) != 16:
+            raise HTTPException(
+                detail="Invalid bytes for k1.", status_code=HTTPStatus.BAD_REQUEST
+            )
+
+        if len(bytes.fromhex(data.k2)) != 16:
+            raise HTTPException(
+                detail="Invalid bytes for k2.", status_code=HTTPStatus.BAD_REQUEST
+            )
+    except Exception as exc:
+        raise HTTPException(
+            detail="Invalid byte data provided.", status_code=HTTPStatus.BAD_REQUEST
+        ) from exc
+
+
+@boltt_api_router.put(
+    "/api/v1/cards/{card_id}",
+    status_code=HTTPStatus.OK,
+    dependencies=[Depends(validate_card)],
+)
+async def api_card_update(
+    data: CreateCardData,
+    card_id: str,
+    wallet: WalletTypeInfo = Depends(require_admin_key),
+) -> Card:
+
+    card = await get_card(card_id)
+    if not card:
+        raise HTTPException(
+            detail="Card does not exist.", status_code=HTTPStatus.NOT_FOUND
+        )
+    if card.wallet != wallet.wallet.id:
+        raise HTTPException(detail="Not your card.", status_code=HTTPStatus.FORBIDDEN)
+    check_uid = await get_card_by_uid(data.uid)
+    if check_uid and check_uid.id != card_id:
+        raise HTTPException(
+            detail="UID already registered. Delete registered card and try again.",
+            status_code=HTTPStatus.BAD_REQUEST,
+        )
+    card = await update_card(card_id, **data.dict())
+    assert card, "update_card should always return a card"
+    return card
+
+
+@boltt_api_router.post(
+    "/api/v1/cards",
+    status_code=HTTPStatus.CREATED,
+    dependencies=[Depends(validate_card)],
+)
+async def api_card_create(
+    data: CreateCardData,
+    wallet: WalletTypeInfo = Depends(require_admin_key),
+) -> Card:
+    check_uid = await get_card_by_uid(data.uid)
+    if check_uid:
+        raise HTTPException(
+            detail="UID already registered. Delete registered card and try again.",
+            status_code=HTTPStatus.BAD_REQUEST,
+        )
+    card = await create_card(wallet_id=wallet.wallet.id, data=data)
+    assert card, "create_card should always return a card"
+    return card
 
 
 @boltt_api_router.get(
-    "/api/v1/myex/{boltt_id}",
-    dependencies=[Depends(require_invoice_key)],
+    "/api/v1/cards/enable/{card_id}/{enable}", status_code=HTTPStatus.OK
 )
-async def api_boltt(boltt_id: str, req: Request) -> boltt:
-    myex = await get_boltt(boltt_id)
-    if not myex:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="boltt does not exist."
-        )
-    # Populate lnurlpay and lnurlwithdraw.
-    # Without the lnurl stuff this wouldnt be needed.
-    myex.lnurlpay = lnurler(myex.id, "boltt.api_lnurl_pay", req)
-    myex.lnurlwithdraw = lnurler(myex.id, "boltt.api_lnurl_withdraw", req)
-
-    return myex
-
-
-## Create a new record
-
-
-@boltt_api_router.post("/api/v1/myex", status_code=HTTPStatus.CREATED)
-async def api_boltt_create(
-    req: Request,  # Withoutthe lnurl stuff this wouldnt be needed
-    data: CreateMyExtensionData,
+async def enable_card(
+    card_id,
+    enable,
     wallet: WalletTypeInfo = Depends(require_admin_key),
-) -> boltt:
-    myex = await create_boltt(data)
-
-    # Populate lnurlpay and lnurlwithdraw.
-    # Withoutthe lnurl stuff this wouldnt be needed.
-    myex.lnurlpay = lnurler(myex.id, "boltt.api_lnurl_pay", req)
-    myex.lnurlwithdraw = lnurler(myex.id, "boltt.api_lnurl_withdraw", req)
-
-    return myex
-
-
-## update a record
-
-
-@boltt_api_router.put("/api/v1/myex/{boltt_id}")
-async def api_boltt_update(
-    req: Request,  # Withoutthe lnurl stuff this wouldnt be needed
-    data: CreateMyExtensionData,
-    boltt_id: str,
-    wallet: WalletTypeInfo = Depends(require_admin_key),
-) -> boltt:
-    myex = await get_boltt(boltt_id)
-    if not myex:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="boltt does not exist."
-        )
-
-    if wallet.wallet.id != myex.wallet:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN, detail="Not your boltt."
-        )
-
-    for key, value in data.dict().items():
-        setattr(myex, key, value)
-
-    myex = await update_boltt(data)
-
-    # Populate lnurlpay and lnurlwithdraw.
-    # Without the lnurl stuff this wouldnt be needed.
-    myex.lnurlpay = lnurler(myex.id, "boltt.api_lnurl_pay", req)
-    myex.lnurlwithdraw = lnurler(myex.id, "boltt.api_lnurl_withdraw", req)
-
-    return myex
-
-
-## Delete a record
-
-
-@boltt_api_router.delete("/api/v1/myex/{boltt_id}")
-async def api_boltt_delete(
-    boltt_id: str, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
-    myex = await get_boltt(boltt_id)
+    card = await get_card(card_id)
+    if not card:
+        raise HTTPException(detail="No card found.", status_code=HTTPStatus.NOT_FOUND)
+    if card.wallet != wallet.wallet.id:
+        raise HTTPException(detail="Not your card.", status_code=HTTPStatus.FORBIDDEN)
+    card = await enable_disable_card(enable=enable, card_id=card_id)
+    assert card
+    return card.dict()
 
-    if not myex:
+
+@boltt_api_router.delete("/api/v1/cards/{card_id}")
+async def api_card_delete(card_id, wallet: WalletTypeInfo = Depends(require_admin_key)):
+    card = await get_card(card_id)
+
+    if not card:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="boltt does not exist."
+            detail="Card does not exist.", status_code=HTTPStatus.NOT_FOUND
         )
 
-    if myex.wallet != wallet.wallet.id:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN, detail="Not your boltt."
-        )
+    if card.wallet != wallet.wallet.id:
+        raise HTTPException(detail="Not your card.", status_code=HTTPStatus.FORBIDDEN)
 
-    await delete_boltt(boltt_id)
-    return
+    await delete_card(card_id)
+    return "", HTTPStatus.NO_CONTENT
 
 
-# ANY OTHER ENDPOINTS YOU NEED
+@boltt_api_router.get("/api/v1/hits")
+async def api_hits(
+    key_info: WalletTypeInfo = Depends(require_invoice_key),
+    all_wallets: bool = Query(False),
+) -> list[Hit]:
+    wallet_ids = [key_info.wallet.id]
 
-## This endpoint creates a payment
+    if all_wallets:
+        user = await get_user(key_info.wallet.user)
+        wallet_ids = user.wallet_ids if user else []
+
+    cards = await get_cards(wallet_ids)
+    cards_ids = []
+    for card in cards:
+        cards_ids.append(card.id)
+
+    return await get_hits(cards_ids)
 
 
-@boltt_api_router.post("/api/v1/myex/payment", status_code=HTTPStatus.CREATED)
-async def api_boltt_create_invoice(data: CreatePayment) -> dict:
-    boltt = await get_boltt(data.boltt_id)
+@boltt_api_router.get("/api/v1/refunds")
+async def api_refunds(
+    key_info: WalletTypeInfo = Depends(require_invoice_key),
+    all_wallets: bool = Query(False),
+) -> list[Refund]:
+    wallet_ids = [key_info.wallet.id]
 
-    if not boltt:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="boltt does not exist."
-        )
+    if all_wallets:
+        user = await get_user(key_info.wallet.user)
+        wallet_ids = user.wallet_ids if user else []
 
-    # we create a payment and add some tags,
-    # so tasks.py can grab the payment once its paid
+    cards = await get_cards(wallet_ids)
+    cards_ids = []
+    for card in cards:
+        cards_ids.append(card.id)
+    hits = await get_hits(cards_ids)
+    hits_ids = []
+    for hit in hits:
+        hits_ids.append(hit.id)
 
-    payment = await create_invoice(
-        wallet_id=boltt.wallet,
-        amount=data.amount,
-        memo=(
-            f"{data.memo} to {boltt.name}" if data.memo else f"{boltt.name}"
-        ),
-        extra={
-            "tag": "boltt",
-            "amount": data.amount,
-        },
-    )
-
-    return {"payment_hash": payment.payment_hash, "payment_request": payment.bolt11}
+    return await get_refunds(hits_ids)
