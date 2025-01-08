@@ -74,7 +74,7 @@
                   icon="query_stats"
                   :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
                   type="a"
-                  :href="'/boltcards/' + props.row.external_id"
+                  :href="'/boltt/' + props.row.external_id"
                   target="_blank"
                 >
                   <q-tooltip>Card Stats</q-tooltip>
@@ -229,7 +229,7 @@
       </q-card-section>
       <q-card-section class="q-pa-none">
         <q-separator></q-separator>
-        <q-list> {% include "boltcards/_api_docs.html" %} </q-list>
+        <q-list> {% include "boltt/_api_docs.html" %} </q-list>
       </q-card-section>
     </q-card>
   </div>
@@ -481,5 +481,5 @@
 </div>
 
 {% endblock %} {% block scripts %} {{ window_vars(user) }}
-<script src="{{ static_url_for('boltcards/static', path='js/index.js') }}"></script>
+<script src="{{ static_url_for('boltt/static', path='js/index.js') }}"></script>
 {% endblock %}
