@@ -17,12 +17,18 @@ window.app = Vue.createApp({
       cardDialog: {
         show: false,
         data: {
-          counter: 1,
-          k0: '',
-          k1: '',
-          k2: '',
-          uid: '',
-          card_name: ''
+          wallet: '',
+          card_name: '',
+          uid: null,
+          k0: null,
+          k1: null,
+          k2: null,
+          counter: 0,
+          daily_limit: null,
+          limit1: null,
+          limit2: null,
+          pin: null,
+          confirmPin: null
         },
         temp: {}
       },
@@ -145,6 +151,35 @@ window.app = Vue.createApp({
         show: false,
         wipe: false,
         data: null
+      }
+    }
+  },
+  computed: {
+    showPinFields() {
+      return this.cardDialog.data.limit2 && 
+             this.cardDialog.data.limit1 && 
+             this.cardDialog.data.limit2 > this.cardDialog.data.limit1;
+    }
+  },
+  watch: {
+    'cardDialog.data.limit2': function(newVal, oldVal) {
+      // Clear PINs if Limit 2 is cleared or becomes less than or equal to Limit 1
+      if (!newVal || !this.cardDialog.data.limit1 || newVal <= this.cardDialog.data.limit1) {
+        this.cardDialog.data.pin = null;
+        this.cardDialog.data.confirmPin = null;
+      }
+    },
+    'cardDialog.data.limit1': function(newVal) {
+      // Clear PINs if Limit 1 change makes Limit 2 invalid
+      if (newVal && this.cardDialog.data.limit2 && this.cardDialog.data.limit2 <= newVal) {
+        this.cardDialog.data.pin = null;
+        this.cardDialog.data.confirmPin = null;
+      }
+    },
+    'cardDialog.data.limit2': function(newVal) {
+      if (!newVal) {
+        this.cardDialog.data.pin = null;
+        this.cardDialog.data.confirmPin = null;
       }
     }
   },

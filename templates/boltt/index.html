@@ -7,28 +7,24 @@
       <q-card-section>
         <div class="row items-center no-wrap q-mb-md">
           <div class="col">
-            <div class="row justify-start" style="width: 150px">
+            <div class="row items-center">
               <div class="col">
-                <h5 class="text-subtitle1 q-my-none">Cards</h5>
-              </div>
-              <div class="col">
-                <q-btn
-                  round
-                  size="sm"
-                  icon="add"
-                  unelevated
-                  color="primary"
-                  @click="addCardOpen"
-                >
-                  <q-tooltip>Add card</q-tooltip>
-                </q-btn>
+                <div class="row items-center">
+                  <h5 class="text-subtitle1 q-my-none">BOLTT Cards</h5>
+                  <q-icon name="security" color="positive" size="sm" class="q-ml-sm">
+                    <q-tooltip>Advanced Security</q-tooltip>
+                  </q-icon>
+                </div>
+                <div class="q-mt-md">
+                  <q-btn round size="sm" icon="add" unelevated color="primary" @click="addCardOpen">
+                    <q-tooltip>Create BOLTT card</q-tooltip>
+                  </q-btn>
+                </div>
               </div>
             </div>
           </div>
           <div class="col-auto">
-            <q-btn flat color="grey" @click="exportCardsCSV"
-              >Export to CSV</q-btn
-            >
+            <q-btn flat color="grey" @click="exportCardsCSV">Export to CSV</q-btn>
           </div>
         </div>
         <q-table
@@ -236,138 +232,257 @@
   <q-dialog v-model="cardDialog.show" position="top" @hide="closeFormDialog">
     <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card">
       <q-form @submit="sendFormData" class="q-gutter-md">
-        <q-select
-          filled
-          dense
-          emit-value
-          v-model="cardDialog.data.wallet"
-          :options="g.user.walletOptions"
-          :disable="cardDialog.data.id != null"
-          label="Wallet *"
-        >
-        </q-select>
-        <div class="row">
-          <div class="col">
-            <q-input
-              filled
-              dense
-              emit-value
-              v-model="cardDialog.data.tx_limit"
-              type="number"
-              label="Max transaction (sats)"
-              class="q-pr-sm"
-            ></q-input>
-          </div>
-          <div class="col">
-            <q-input
-              filled
-              dense
-              emit-value
-              v-model="cardDialog.data.daily_limit"
-              type="number"
-              label="Daily limit (sats)"
-            ></q-input>
+        <div class="q-mb-md">
+          <q-select
+            filled
+            dense
+            emit-value
+            v-model="cardDialog.data.wallet"
+            :options="g.user.walletOptions"
+            :disable="cardDialog.data.id != null"
+            label="Wallet *"
+            :rules="[val => !!val || 'Wallet is required']"
+          >
+          </q-select>
+        </div>
+
+        <div class="q-mb-md">
+          <q-input
+            filled
+            dense
+            v-model="cardDialog.data.card_name"
+            type="text"
+            label="Card name *"
+          ></q-input>
+        </div>
+
+        <div class="q-mb-md">
+          <q-input
+            filled
+            dense
+            emit-value
+            v-model="cardDialog.data.daily_limit"
+            type="number"
+            label="Daily limit (sats) *"
+          >
+            <template v-slot:append>
+              <q-icon name="help_outline">
+                <q-tooltip>Maximum amount that can be spent per day</q-tooltip>
+              </q-icon>
+            </template>
+          </q-input>
+        </div>
+
+        <div style="height: 16px;"></div>
+
+        <!-- BOLTT Security Limits -->
+        <div class="q-mb-md">
+          <div class="q-gutter-y-md">
+            <div>
+              <q-input
+                filled
+                dense
+                v-model.number="cardDialog.data.limit1"
+                type="number"
+                label="Limit 1 | confirm with card tap *"
+              >
+                <template v-slot:append>
+                  <q-icon name="help_outline">
+                    <q-tooltip>Maximum amount for transactions requiring card tap confirmation</q-tooltip>
+                  </q-icon>
+                </template>
+              </q-input>
+            </div>
+            <div>
+              <q-input
+                filled
+                dense
+                v-model.number="cardDialog.data.limit2"
+                type="number"
+                label="Limit 2 | PIN & confirm with card tap *"
+              >
+                <template v-slot:append>
+                  <q-icon name="help_outline">
+                    <q-tooltip>Maximum amount for transactions requiring both PIN and card tap confirmation</q-tooltip>
+                  </q-icon>
+                </template>
+                <template v-slot:hint v-if="cardDialog.data.limit2 && cardDialog.data.limit1 && cardDialog.data.limit2 <= cardDialog.data.limit1">
+                  Limit 2 must be higher than Limit 1
+                </template>
+                <template v-slot:error>
+                  Limit 2 must be higher than Limit 1
+                </template>
+              </q-input>
+            </div>
           </div>
         </div>
-        <q-input
-          filled
-          dense
-          emit-value
-          v-model="cardDialog.data.card_name"
-          type="text"
-          label="Card name "
-        >
-        </q-input>
-        <div class="row">
-          <div class="col-10">
-            <q-input
-              filled
-              dense
-              emit-value
-              v-model="cardDialog.data.uid"
-              type="text"
-              label="Card UID "
-            >
-            </q-input>
-          </div>
-          <div class="col-2 q-pl-sm">
-            <q-btn
-              outline
-              color="grey"
-              icon="nfc"
-              :disable="disableNfcButton"
-              @click="readNfcTag()"
-            >
-              <q-tooltip>Tap card to scan UID</q-tooltip>
-            </q-btn>
+
+        <div class="q-mb-md" v-if="cardDialog.data.limit2 && cardDialog.data.limit1 && cardDialog.data.limit2 > cardDialog.data.limit1">
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <q-input
+                filled
+                dense
+                v-model="cardDialog.data.pin"
+                type="password"
+                label="PIN for BOLTT App *"
+                mask="####"
+                :rules="[
+                  val => !showPinFields || !!val || 'PIN is required when Limit 2 is set',
+                  val => !showPinFields || val.length === 4 || 'PIN must be 4 digits'
+                ]"
+              >
+                <template v-slot:append>
+                  <q-icon name="help_outline">
+                    <q-tooltip>Enter a 4-digit PIN to unlock high-value payments in BOLTT App</q-tooltip>
+                  </q-icon>
+                </template>
+              </q-input>
+            </div>
+            <div class="col-6">
+              <q-input
+                filled
+                dense
+                v-model="cardDialog.data.confirmPin"
+                type="password"
+                label="Confirm PIN *"
+                mask="####"
+                :error="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin !== cardDialog.data.confirmPin"
+                :error-message="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin !== cardDialog.data.confirmPin ? 'PINs do not match' : ''"
+                :rules="[
+                  val => !showPinFields || !!val || 'Confirm PIN is required when Limit 2 is set',
+                  val => !showPinFields || val.length === 4 || 'PIN must be 4 digits',
+                  val => !showPinFields || !cardDialog.data.pin || val === cardDialog.data.pin || 'PINs do not match'
+                ]"
+              >
+                <template v-slot:append>
+                  <q-icon 
+                    :name="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin === cardDialog.data.confirmPin ? 'check_circle' : 'help_outline'" 
+                    :color="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin === cardDialog.data.confirmPin ? 'positive' : 'grey'"
+                  >
+                    <q-tooltip>Re-enter your PIN to confirm</q-tooltip>
+                  </q-icon>
+                </template>
+              </q-input>
+            </div>
           </div>
         </div>
-        <q-toggle
-          v-model="toggleAdvanced"
-          label="Show advanced options"
-        ></q-toggle>
+
+        <div style="height: 16px;"></div>
+
+        <div class="q-mb-md">
+          <div class="row q-col-gutter-md">
+            <div class="col-10">
+              <q-input
+                filled
+                dense
+                v-model="cardDialog.data.uid"
+                type="text"
+                label="Card UID *"
+              ></q-input>
+            </div>
+            <div class="col-2">
+              <q-btn
+                outline
+                color="grey"
+                icon="nfc"
+                :disable="disableNfcButton"
+                @click="readNfcTag()"
+              >
+                <q-tooltip>Tap card to scan UID</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+        </div>
+        <div class="q-mb-md">
+          <q-toggle
+            v-model="toggleAdvanced"
+            label="Show advanced options"
+          ></q-toggle>
+        </div>
 
         <div v-show="toggleAdvanced" class="q-gutter-y-md">
-          <q-input
-            filled
-            dense
-            v-model="cardDialog.data.k0"
-            type="text"
-            label="Card Auth key (K0)"
-            hint="Used to authentificate with the card (16 bytes in HEX). "
-            @randomkey
-          ></q-input>
-          <q-input
-            filled
-            dense
-            v-model="cardDialog.data.k1"
-            type="text"
-            label="Card Meta key (K1)"
-            hint="Used for encypting of the message (16 bytes in HEX)."
-          ></q-input>
-          <q-input
-            filled
-            dense
-            v-model="cardDialog.data.k2"
-            type="text"
-            label="Card File key (K2)"
-            hint="Used for CMAC of the message (16 bytes in HEX)."
-          ></q-input>
-          <q-input
-            filled
-            dense
-            v-model.number="cardDialog.data.counter"
-            type="number"
-            label="Initial counter"
-          >
-            <q-tooltip class="bg-grey-8" anchor="bottom left" self="top left"
-              >Zero if you don't know.</q-tooltip
+          <div class="q-mb-md">
+            <q-input
+              filled
+              dense
+              v-model="cardDialog.data.k0"
+              type="text"
+              label="Card Auth key (K0)"
+              hint="Used to authentificate with the card (16 bytes in HEX). "
+              @randomkey
+            ></q-input>
+          </div>
+          <div class="q-mb-md">
+            <q-input
+              filled
+              dense
+              v-model="cardDialog.data.k1"
+              type="text"
+              label="Card Meta key (K1)"
+              hint="Used for encypting of the message (16 bytes in HEX)."
+            ></q-input>
+          </div>
+          <div class="q-mb-md">
+            <q-input
+              filled
+              dense
+              v-model="cardDialog.data.k2"
+              type="text"
+              label="Card File key (K2)"
+              hint="Used for CMAC of the message (16 bytes in HEX)."
+            ></q-input>
+          </div>
+          <div class="q-mb-md">
+            <q-input
+              filled
+              dense
+              v-model.number="cardDialog.data.counter"
+              type="number"
+              label="Initial counter"
             >
-          </q-input>
-          <q-btn
-            unelevated
-            color="primary"
-            class="q-ml-auto"
-            @click="generateKeys"
-            >Generate keys</q-btn
-          >
+              <q-tooltip class="bg-grey-8" anchor="bottom left" self="top left"
+                >Zero if you don't know.</q-tooltip
+              >
+            </q-input>
+          </div>
+          <div class="q-mb-md">
+            <q-btn
+              unelevated
+              color="primary"
+              class="q-ml-auto"
+              @click="generateKeys"
+              >Generate keys</q-btn
+            >
+          </div>
         </div>
         <div class="row q-mt-lg">
           <q-btn
             v-if="cardDialog.data.id"
             unelevated
             color="primary"
+            @click="deleteCard"
+            >Delete Card</q-btn
+          >
+          <q-btn
+            v-if="cardDialog.data.id"
+            unelevated
+            color="primary"
+            style="min-width: 110px;"
+            :disable="cardDialog.data.uid == null"
             type="submit"
+            class="q-ml-sm"
             >Update Card</q-btn
           >
           <q-btn
-            v-else
+            v-if="!cardDialog.data.id"
             unelevated
             color="primary"
+            style="min-width: 110px;"
             :disable="cardDialog.data.uid == null"
             type="submit"
-            >Create Card
-          </q-btn>
+            >Create Card</q-btn
+          >
           <q-btn v-close-popup flat color="grey" class="q-ml-auto"
             >Cancel</q-btn
           >
