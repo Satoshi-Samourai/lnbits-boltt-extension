@@ -1,0 +1,28 @@
+.boltt-security-card {
+  border: 2px solid var(--q-primary);
+  border-radius: 8px;
+  background: linear-gradient(to right bottom, rgba(var(--q-primary), 0.05), transparent);
+}
+
+.boltt-security-card .q-table__container {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.boltt-security-card .text-subtitle1 {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.boltt-security-table {
+  margin-top: 1rem;
+}
+
+/* Dark mode support */
+.body--dark .boltt-security-card {
+  background: linear-gradient(to right bottom, rgba(var(--q-primary), 0.1), transparent);
+}
+
+.body--dark .boltt-security-card .q-table__container {
+  background: rgba(0, 0, 0, 0.3);
+}
