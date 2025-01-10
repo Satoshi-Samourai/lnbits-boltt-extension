@@ -11,9 +11,12 @@
               <div class="col">
                 <div class="row items-center">
                   <h5 class="text-subtitle1 q-my-none">BOLTT Cards</h5>
-                  <q-icon name="security" color="positive" size="sm" class="q-ml-sm">
+                  <q-icon name="security" color="positive" size="md" class="q-ml-sm">
                     <q-tooltip>Advanced Security</q-tooltip>
                   </q-icon>
+                  <span class="q-ml-sm text-subtitle1">
+                    <span class="text-warning">BOLT</span><span class="text-white text-caption">ap</span><span class="text-warning">T</span><span class="text-white text-caption">ransfer</span>
+                  </span>
                 </div>
                 <div class="q-mt-md">
                   <q-btn round size="sm" icon="add" unelevated color="primary" @click="addCardOpen">
@@ -637,7 +640,10 @@
   <q-dialog v-model="appQrDialog.show" position="top">
     <q-card class="q-pa-lg lnbits__dialog-card">
       <q-card-section class="row items-center q-pb-none">
-        <div class="col"></div>
+        <div class="col text-h6">
+          <img src="/boltt/static/image/boltt-icon.png" style="height: 24px; vertical-align: middle; margin-right: 8px;">
+          BOLTT App
+        </div>
         <q-btn icon="close" flat round dense v-close-popup color="positive" />
       </q-card-section>
       <div class="col q-mt-lg text-center">
