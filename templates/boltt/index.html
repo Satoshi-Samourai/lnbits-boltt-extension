@@ -147,11 +147,9 @@
               <div>
                 <q-btn
                   color="primary"
-                  icon="download"
-                  label="Download APK"
-                  type="a"
-                  href="https://github.com/Satoshi-Samourai/boltcard-verifier-cap/releases/latest/download/app-release.apk"
-                  target="_blank"
+                  icon="qr_code_scanner"
+                  label="Scan QR Code"
+                  @click="openAppQrDialog"
                 />
               </div>
             </div>
@@ -634,6 +632,45 @@
       </div>
     </q-card>
   </q-dialog>
+
+  <!-- Add QR code dialog for app download -->
+  <q-dialog v-model="appQrDialog.show" position="top">
+    <q-card class="q-pa-lg lnbits__dialog-card">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="col"></div>
+        <q-btn icon="close" flat round dense v-close-popup color="positive" />
+      </q-card-section>
+      <div class="col q-mt-lg text-center">
+        <lnbits-qrcode
+          :value="appQrDialog.link"
+          :size="300"
+          class="rounded-borders"
+        ></lnbits-qrcode>
+        <p class="text-center q-mt-md">
+          Scan this QR code with your phone to download the BOLTT App
+        </p>
+        <div class="row justify-center q-gutter-md">
+          <q-btn
+            outline
+            color="primary"
+            @click="console.log('Link value:', appQrDialog.link); copyText(appQrDialog.link)"
+          >
+            Copy Link
+          </q-btn>
+          <q-btn
+            outline
+            color="primary"
+            type="a"
+            :href="appQrDialog.link"
+            target="_blank"
+          >
+            Open Link
+          </q-btn>
+        </div>
+      </div>
+    </q-card>
+  </q-dialog>
+
 </div>
 
 {% endblock %} {% block scripts %} {{ window_vars(user) }}

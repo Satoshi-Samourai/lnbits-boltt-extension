@@ -32,6 +32,10 @@ window.app = Vue.createApp({
         },
         temp: {}
       },
+      appQrDialog: {
+        show: false,
+        link: 'https://github.com/Satoshi-Samourai/boltcard-verifier-cap/releases/latest/download/app-release.apk'
+      },
       cardsTable: {
         columns: [
           {
@@ -286,6 +290,10 @@ window.app = Vue.createApp({
       this.qrCodeDialog.wipe = wipe
       this.qrCodeDialog.show = true
     },
+    openAppQrDialog() {
+      console.log('Opening app QR dialog with link:', this.appQrDialog.link)  
+      this.appQrDialog.show = true
+    },
     addCardOpen() {
       this.cardDialog.show = true
       this.generateKeys()
@@ -435,6 +443,72 @@ window.app = Vue.createApp({
     },
     exportRefundsCSV() {
       LNbits.utils.exportCSV(this.refundsTable.columns, this.refunds)
+    },
+    copyText(text) {
+      // Ensure text is a string and not undefined
+      if (!text) {
+        console.error('No text provided to copy')
+        this.$q.notify({
+          message: 'Nothing to copy',
+          color: 'red'
+        })
+        return
+      }
+      
+      console.log('Attempting to copy:', text)
+      
+      // Use a more robust clipboard API approach
+      if (navigator.clipboard && window.isSecureContext) {
+        // For modern browsers
+        navigator.clipboard.writeText(text)
+          .then(() => {
+            console.log('Successfully copied using Clipboard API')
+            this.$q.notify({
+              message: 'Copied to clipboard!',
+              color: 'green'
+            })
+          })
+          .catch(err => {
+            console.error('Clipboard API failed:', err)
+            // Fall back to older method
+            this.fallbackCopyText(text)
+          })
+      } else {
+        // Fall back to older method
+        this.fallbackCopyText(text)
+      }
+    },
+    
+    fallbackCopyText(text) {
+      try {
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        
+        if (successful) {
+          console.log('Successfully copied using fallback method')
+          this.$q.notify({
+            message: 'Copied to clipboard!',
+            color: 'green'
+          })
+        } else {
+          throw new Error('Copy command failed')
+        }
+      } catch (err) {
+        console.error('Fallback copy failed:', err)
+        this.$q.notify({
+          message: 'Failed to copy to clipboard',
+          color: 'red'
+        })
+      }
     }
   },
   created() {
