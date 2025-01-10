@@ -34,7 +34,7 @@ window.app = Vue.createApp({
       },
       appQrDialog: {
         show: false,
-        link: 'https://github.com/Satoshi-Samourai/boltcard-verifier-cap/releases/latest/download/app-release.apk'
+        link: 'https://github.com/Satoshi-Samourai/boltcard-verifier-cap/releases/latest/download/BOLTT-App.apk'
       },
       cardsTable: {
         columns: [
