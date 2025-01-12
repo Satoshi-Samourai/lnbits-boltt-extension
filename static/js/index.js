@@ -160,28 +160,28 @@ window.app = Vue.createApp({
   },
   computed: {
     showPinFields() {
-      return this.cardDialog.data.limit2 && 
-             this.cardDialog.data.limit1 && 
-             this.cardDialog.data.limit2 > this.cardDialog.data.limit1;
+      const limit1 = parseInt(this.cardDialog.data.limit1) || 0;
+      const limit2 = parseInt(this.cardDialog.data.limit2) || 0;
+      return limit2 > 0 && (limit1 === 0 || limit2 > limit1);
     }
   },
   watch: {
-    'cardDialog.data.limit2': function(newVal, oldVal) {
-      // Clear PINs if Limit 2 is cleared or becomes less than or equal to Limit 1
-      if (!newVal || !this.cardDialog.data.limit1 || newVal <= this.cardDialog.data.limit1) {
+    'cardDialog.data.limit2': function(newVal) {
+      const limit1 = parseInt(this.cardDialog.data.limit1) || 0;
+      const limit2 = parseInt(newVal) || 0;
+      
+      // Clear PINs if Limit2 is cleared or less than/equal to Limit1 (when Limit1 is set)
+      if (limit2 === 0 || (limit1 > 0 && limit2 <= limit1)) {
         this.cardDialog.data.pin = null;
         this.cardDialog.data.confirmPin = null;
       }
     },
     'cardDialog.data.limit1': function(newVal) {
-      // Clear PINs if Limit 1 change makes Limit 2 invalid
-      if (newVal && this.cardDialog.data.limit2 && this.cardDialog.data.limit2 <= newVal) {
-        this.cardDialog.data.pin = null;
-        this.cardDialog.data.confirmPin = null;
-      }
-    },
-    'cardDialog.data.limit2': function(newVal) {
-      if (!newVal) {
+      const limit1 = parseInt(newVal) || 0;
+      const limit2 = parseInt(this.cardDialog.data.limit2) || 0;
+      
+      // Clear PINs if Limit1 is set and greater than or equal to Limit2
+      if (limit1 > 0 && limit2 > 0 && limit2 <= limit1) {
         this.cardDialog.data.pin = null;
         this.cardDialog.data.confirmPin = null;
       }
