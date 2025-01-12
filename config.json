@@ -2,7 +2,7 @@
   "name": "BOLTT",
   "short_description": "BOLTT - Bolt Card Tap to Transfer. Add an extra layer of security to your Bolt Card payments",
   "tile": "/boltt/static/image/boltt-logo-rounded.png",
-  "min_lnbits_version": "1.0.0",
+  "min_lnbits_version": "0.12.12",
   "contributors": [
     {
       "name": "Satoshi Samourai",
