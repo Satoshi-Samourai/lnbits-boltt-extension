@@ -13,7 +13,7 @@ boltt_generic_router = APIRouter()
 
 
 def boltt_renderer():
-    return template_renderer(["templates"])
+    return template_renderer(["templates/boltt"])
 
 
 @boltt_generic_router.get("/", response_class=HTMLResponse)
