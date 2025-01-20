@@ -1,4 +1,22 @@
 {
+  "name": "BOLTT",
+  "short_description": "BOLT Card Terminal",
+  "tile": "/boltt/static/image/boltt.png",
+  "contributors": ["Satoshi-Samourai"],
+  "min_lnbits_version": "1.0.0rc7",
+  "files": [
+    "migrations.py",
+    "__init__.py",
+    "config.json",
+    "crud.py",
+    "models.py",
+    "tasks.py",
+    "views.py",
+    "static/*",
+    "templates/*"
+  ],
+  "static_files": ["static/image/boltt.png"],
+  "hooks": [],
   "repos": [
     {
       "id": "boltt",
