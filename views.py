@@ -13,13 +13,13 @@ boltt_generic_router = APIRouter()
 
 
 def boltt_renderer():
-    return template_renderer(["templates/boltt"])
+    return template_renderer(["templates"])
 
 
 @boltt_generic_router.get("/", response_class=HTMLResponse)
 async def index(request: Request, user: User = Depends(check_user_exists)):
     return boltt_renderer().TemplateResponse(
-        "index.html", {"request": request, "user": user.json()}
+        "boltt/index.html", {"request": request, "user": user.json()}
     )
 
 
@@ -40,7 +40,7 @@ async def display(request: Request, card_id: str, user: User = Depends(check_use
     refunds = [refund.hit_id for refund in await get_refunds([hit.id for hit in hits])]
     card_json = card.json(exclude={"wallet"})
     return boltt_renderer().TemplateResponse(
-        "display.html",
+        "boltt/display.html",
         {
             "request": request,
             "card": card_json,
