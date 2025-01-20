@@ -7,7 +7,7 @@ from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
 
-from .crud import get_card_by_external_id, get_hits, get_refunds
+from .crud import get_card, get_hits, get_refunds
 
 boltt_generic_router = APIRouter()
 
@@ -25,17 +25,18 @@ async def index(request: Request, user: User = Depends(check_user_exists)):
 
 @boltt_generic_router.get("/{card_id}", response_class=HTMLResponse)
 async def display(request: Request, card_id: str, user: User = Depends(check_user_exists)):
-    card = await get_card_by_external_id(card_id)
+    card = await get_card(card_id)
     if not card:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Card does not exist."
         )
-    wallet = await get_wallet(card.wallet)
-    wallet_balance = 0
-    if wallet:
-        wallet_balance = wallet.balance
-    hits = await get_hits([card.id])
-    hits_json = [hit.json() for hit in hits]
+
+    if card.wallet != user.wallet.id:
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN, detail="Not your card."
+        )
+
+    hits = await get_hits(card_id)
     refunds = [refund.hit_id for refund in await get_refunds([hit.id for hit in hits])]
     card_json = card.json(exclude={"wallet"})
     return boltt_renderer().TemplateResponse(
@@ -43,8 +44,7 @@ async def display(request: Request, card_id: str, user: User = Depends(check_use
         {
             "request": request,
             "card": card_json,
-            "hits": hits_json,
+            "hits": [hit.json() for hit in hits],
             "refunds": refunds,
-            "balance": int(wallet_balance),
         },
     )
