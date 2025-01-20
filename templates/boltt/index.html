@@ -1,0 +1,684 @@
+{% extends "base.html" %} {% from "macros.jinja" import window_vars with context
+%} {% block page %}
+
+<div class="row q-col-gutter-md">
+  <div class="col-12 col-md-8 col-lg-7 q-gutter-y-md">
+    <q-card>
+      <q-card-section>
+        <div class="row items-center no-wrap q-mb-md">
+          <div class="col">
+            <div class="row items-center">
+              <div class="col">
+                <div class="row items-center">
+                  <h5 class="text-subtitle1 q-my-none">BOLTT Cards</h5>
+                  <q-icon name="security" color="positive" size="md" class="q-ml-sm">
+                    <q-tooltip>Advanced Security</q-tooltip>
+                  </q-icon>
+                  <span class="q-ml-sm text-subtitle1">
+                    <span class="text-warning">BOLT</span><span class="text-white text-caption">ap</span><span class="text-warning">T</span><span class="text-white text-caption">ransfer</span>
+                  </span>
+                </div>
+                <div class="q-mt-md">
+                  <q-btn round size="sm" icon="add" unelevated color="primary" @click="addCardOpen">
+                    <q-tooltip>Create BOLTT card</q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-auto">
+            <q-btn flat color="grey" @click="exportCardsCSV">Export to CSV</q-btn>
+          </div>
+        </div>
+        <q-table
+          dense
+          flat
+          :rows="cards"
+          :columns="cardsTable.columns"
+          v-model:pagination="cardsTable.pagination"
+          row-key="id"
+        >
+          <template v-slot:header="props">
+            <q-tr :props="props">
+              <q-th auto-width></q-th>
+              <q-th auto-width></q-th>
+              <q-th
+                v-for="col in props.cols"
+                :key="col.name"
+                :props="props"
+                v-text="col.label"
+              ></q-th>
+              <q-th auto-width></q-th>
+              <q-th auto-width></q-th>
+              <q-th auto-width></q-th>
+            </q-tr>
+          </template>
+          <template v-slot:body="props">
+            <q-tr :props="props">
+              <q-td auto-width>
+                <q-btn
+                  unelevated
+                  dense
+                  icon="qr_code"
+                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
+                  @click="openQrCodeDialog(props.row.id, false)"
+                >
+                  <q-tooltip>Card key credentials</q-tooltip>
+                </q-btn>
+              </q-td>
+              <q-td auto-width>
+                <q-btn
+                  unelevated
+                  dense
+                  icon="query_stats"
+                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
+                  type="a"
+                  :href="'/boltt/' + props.row.external_id"
+                  target="_blank"
+                >
+                  <q-tooltip>Card Stats</q-tooltip>
+                </q-btn>
+              </q-td>
+              <q-td
+                v-for="col in props.cols"
+                :key="col.name"
+                :props="props"
+                v-text="col.value"
+              ></q-td>
+              <q-td auto-width>
+                <q-btn
+                  v-if="props.row.enable"
+                  dense
+                  @click="enableCard(props.row.wallet, props.row.id, false)"
+                  color="pink"
+                  >DISABLE</q-btn
+                >
+                <q-btn
+                  v-else
+                  dense
+                  @click="enableCard(props.row.wallet, props.row.id, true)"
+                  color="green"
+                  >ENABLE
+                </q-btn>
+              </q-td>
+              <q-td auto-width>
+                <q-btn
+                  flat
+                  dense
+                  size="xs"
+                  @click="updateCardDialog(props.row.id)"
+                  icon="edit"
+                  color="light-blue"
+                >
+                  <q-tooltip>Edit card</q-tooltip>
+                </q-btn>
+              </q-td>
+              <q-td auto-width>
+                <q-btn
+                  flat
+                  dense
+                  size="xs"
+                  @click="openQrCodeDialog(props.row.id, true)"
+                  icon="cancel"
+                  color="pink"
+                >
+                  <q-tooltip
+                    >Deleting card will also delete all records</q-tooltip
+                  >
+                </q-btn>
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
+      </q-card-section>
+    </q-card>
+
+    <q-card class="q-mt-md" style="overflow: hidden;">
+      <q-card-section>
+        <div class="row items-center no-wrap">
+          <div class="col">
+            <div class="row items-center">
+              <h5 class="text-subtitle1 q-my-none">BOLTT App</h5>
+              <q-icon name="android" color="positive" size="md" class="q-ml-md">
+                <q-tooltip>Android App</q-tooltip>
+              </q-icon>
+            </div>
+            <p class="text-body2 q-mt-sm q-mb-none">Download the BOLTT Android App to verify your BOLTT Card transactions</p>
+          </div>
+          <div class="col-auto">
+            <div class="row items-center q-gutter-md">
+              <div>
+                <q-btn
+                  color="primary"
+                  icon="qr_code_scanner"
+                  label="Scan QR Code"
+                  @click="openAppQrDialog"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="q-mt-sm">
+          <q-item class="q-mt-sm q-px-none">
+            <q-item-section avatar>
+              <q-icon name="info" size="xs" color="positive" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="text-white">
+                The BOLTT App is required to verify higher-value transactions (Limit 1: tap and Limit 2: PIN & tap)
+              </q-item-label>
+            </q-item-section>
+          </q-item>
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <q-card>
+      <q-card-section>
+        <div class="row items-center no-wrap q-mb-md">
+          <div class="col">
+            <h5 class="text-subtitle1 q-my-none">Hits</h5>
+          </div>
+          <div class="col-auto">
+            <q-btn flat color="grey" @click="exportHitsCSV">Export to CSV</q-btn>
+          </div>
+        </div>
+        <q-table
+          dense
+          flat
+          :rows="hits"
+          :columns="hitsTable.columns"
+          :pagination="hitsTable.pagination"
+          row-key="id"
+        >
+          <template v-slot:header="props">
+            <q-tr :props="props">
+              <q-th
+                v-for="col in props.cols"
+                :key="col.name"
+                :props="props"
+                v-text="col.label"
+              ></q-th>
+            </q-tr>
+          </template>
+          <template v-slot:body="props">
+            <q-tr :props="props">
+              <q-td
+                v-for="col in props.cols"
+                :key="col.name"
+                :props="props"
+                v-text="col.value"
+              ></q-td>
+            </q-tr>
+          </template>
+        </q-table>
+      </q-card-section>
+    </q-card>
+    <q-card>
+      <q-card-section>
+        <div class="row items-center no-wrap q-mb-md">
+          <div class="col">
+            <h5 class="text-subtitle1 q-my-none">Refunds</h5>
+          </div>
+          <div class="col-auto">
+            <q-btn flat color="grey" @click="exportRefundsCSV">Export to CSV</q-btn>
+          </div>
+        </div>
+        <q-table
+          dense
+          flat
+          :rows="refunds"
+          :columns="refundsTable.columns"
+          :pagination="refundsTable.pagination"
+          row-key="id"
+        >
+          <template v-slot:header="props">
+            <q-tr :props="props">
+              <q-th
+                v-for="col in props.cols"
+                :key="col.name"
+                :props="props"
+                v-text="col.label"
+              ></q-th>
+            </q-tr>
+          </template>
+          <template v-slot:body="props">
+            <q-tr :props="props">
+              <q-td
+                v-for="col in props.cols"
+                :key="col.name"
+                :props="props"
+                v-text="col.value"
+              ></q-td>
+            </q-tr>
+          </template>
+        </q-table>
+      </q-card-section>
+    </q-card>
+  </div>
+  <div class="col-12 col-md-4 col-lg-5 q-gutter-y-md">
+    <q-card>
+      <q-card-section>
+        <h6 class="text-subtitle1 q-my-none">
+          {{SITE_TITLE}} Boltt - add an extra layer of security to your payments
+        </h6>
+      </q-card-section>
+      <q-card-section class="q-pa-none">
+        <q-separator></q-separator>
+        <q-list> {% include "boltt/_api_docs.html" %} </q-list>
+      </q-card-section>
+    </q-card>
+  </div>
+  <q-dialog v-model="cardDialog.show" position="top" @hide="closeFormDialog">
+    <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card">
+      <div :class="{'hidden': !cardDialog.show}">
+        <q-form @submit="sendFormData" class="q-gutter-md">
+          <div class="q-mb-md">
+            <q-select
+              filled
+              dense
+              emit-value
+              v-model="cardDialog.data.wallet"
+              :options="g.user.walletOptions"
+              :disable="cardDialog.data.id != null"
+              label="Wallet *"
+              :rules="[val => !!val || 'Wallet is required']"
+            >
+            </q-select>
+          </div>
+
+          <div class="q-mb-md">
+            <q-input
+              filled
+              dense
+              v-model="cardDialog.data.card_name"
+              type="text"
+              label="Card name *"
+            ></q-input>
+          </div>
+
+          <div class="q-mb-md">
+            <q-input
+              filled
+              dense
+              emit-value
+              v-model="cardDialog.data.daily_limit"
+              type="number"
+              label="Daily limit (sats) *"
+            >
+              <template v-slot:append>
+                <q-icon name="help_outline">
+                  <q-tooltip>Maximum amount that can be spent per day</q-tooltip>
+                </q-icon>
+              </template>
+            </q-input>
+          </div>
+
+          <div style="height: 16px;"></div>
+
+          <!-- BOLTT Security Limits -->
+          <div class="q-mb-md">
+            <div class="q-gutter-y-md">
+              <div>
+                <q-input
+                  filled
+                  dense
+                  v-model.number="cardDialog.data.limit1"
+                  type="number"
+                  label="Limit 1 | confirm with card tap *"
+                >
+                  <template v-slot:append>
+                    <q-icon name="help_outline">
+                      <q-tooltip>Maximum amount for transactions requiring card tap confirmation</q-tooltip>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </div>
+              <div>
+                <q-input
+                  filled
+                  dense
+                  v-model.number="cardDialog.data.limit2"
+                  type="number"
+                  label="Limit 2 | PIN & confirm with card tap *"
+                >
+                  <template v-slot:append>
+                    <q-icon name="help_outline">
+                      <q-tooltip>Maximum amount for transactions requiring both PIN and card tap confirmation</q-tooltip>
+                    </q-icon>
+                  </template>
+                  <template v-slot:hint v-if="cardDialog.data.limit2 && cardDialog.data.limit1 && cardDialog.data.limit2 <= cardDialog.data.limit1">
+                    Limit 2 must be higher than Limit 1
+                  </template>
+                  <template v-slot:error>
+                    Limit 2 must be higher than Limit 1
+                  </template>
+                </q-input>
+              </div>
+            </div>
+          </div>
+
+          <div class="q-mb-md" v-if="showPinFields">
+            <div class="row q-col-gutter-md">
+              <div class="col-6">
+                <q-input
+                  filled
+                  dense
+                  v-model="cardDialog.data.pin"
+                  type="password"
+                  label="PIN for BOLTT App *"
+                  mask="####"
+                  :rules="[
+                    val => !showPinFields || !!val || 'PIN is required when Limit 2 is set',
+                    val => !showPinFields || val.length === 4 || 'PIN must be 4 digits'
+                  ]"
+                >
+                  <template v-slot:append>
+                    <q-icon name="help_outline">
+                      <q-tooltip>Enter a 4-digit PIN to unlock high-value payments in BOLTT App</q-tooltip>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-6">
+                <q-input
+                  filled
+                  dense
+                  v-model="cardDialog.data.confirmPin"
+                  type="password"
+                  label="Confirm PIN *"
+                  mask="####"
+                  :error="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin !== cardDialog.data.confirmPin"
+                  :error-message="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin !== cardDialog.data.confirmPin ? 'PINs do not match' : ''"
+                  :rules="[
+                    val => !showPinFields || !!val || 'Confirm PIN is required when Limit 2 is set',
+                    val => !showPinFields || val.length === 4 || 'PIN must be 4 digits',
+                    val => !showPinFields || !cardDialog.data.pin || val === cardDialog.data.pin || 'PINs do not match'
+                  ]"
+                >
+                  <template v-slot:append>
+                    <q-icon 
+                      :name="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin === cardDialog.data.confirmPin ? 'check_circle' : 'help_outline'" 
+                      :color="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin === cardDialog.data.confirmPin ? 'positive' : 'grey'"
+                    >
+                      <q-tooltip>Re-enter your PIN to confirm</q-tooltip>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </div>
+            </div>
+          </div>
+
+          <div style="height: 16px;"></div>
+
+          <div class="q-mb-md">
+            <div class="row q-col-gutter-md">
+              <div class="col-10">
+                <q-input
+                  filled
+                  dense
+                  v-model="cardDialog.data.uid"
+                  type="text"
+                  label="Card UID *"
+                ></q-input>
+              </div>
+              <div class="col-2">
+                <q-btn
+                  outline
+                  color="grey"
+                  icon="nfc"
+                  :disable="disableNfcButton"
+                  @click="readNfcTag()"
+                >
+                  <q-tooltip>Tap card to scan UID</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
+          </div>
+          <div class="q-mb-md">
+            <q-toggle
+              v-model="toggleAdvanced"
+              label="Show advanced options"
+            ></q-toggle>
+          </div>
+
+          <div v-show="toggleAdvanced" class="q-gutter-y-md">
+            <div class="q-mb-md">
+              <q-input
+                filled
+                dense
+                v-model="cardDialog.data.k0"
+                type="text"
+                label="Card Auth key (K0)"
+                hint="Used to authentificate with the card (16 bytes in HEX). "
+                @randomkey
+              ></q-input>
+            </div>
+            <div class="q-mb-md">
+              <q-input
+                filled
+                dense
+                v-model="cardDialog.data.k1"
+                type="text"
+                label="Card Meta key (K1)"
+                hint="Used for encypting of the message (16 bytes in HEX)."
+              ></q-input>
+            </div>
+            <div class="q-mb-md">
+              <q-input
+                filled
+                dense
+                v-model="cardDialog.data.k2"
+                type="text"
+                label="Card File key (K2)"
+                hint="Used for CMAC of the message (16 bytes in HEX)."
+              ></q-input>
+            </div>
+            <div class="q-mb-md">
+              <q-input
+                filled
+                dense
+                v-model.number="cardDialog.data.counter"
+                type="number"
+                label="Initial counter"
+              >
+                <q-tooltip class="bg-grey-8" anchor="bottom left" self="top left"
+                  >Zero if you don't know.</q-tooltip
+                >
+              </q-input>
+            </div>
+            <div class="q-mb-md">
+              <q-btn
+                unelevated
+                color="primary"
+                class="q-ml-auto"
+                @click="generateKeys"
+                >Generate keys</q-btn
+              >
+            </div>
+          </div>
+          <div class="row q-mt-lg">
+            <q-btn
+              v-if="cardDialog.data.id"
+              unelevated
+              color="primary"
+              @click="deleteCard"
+              >Delete Card</q-btn
+            >
+            <q-btn
+              v-if="cardDialog.data.id"
+              unelevated
+              color="primary"
+              style="min-width: 110px;"
+              :disable="cardDialog.data.uid == null"
+              type="submit"
+              class="q-ml-sm"
+              >Update Card</q-btn
+            >
+            <q-btn
+              v-if="!cardDialog.data.id"
+              unelevated
+              color="primary"
+              style="min-width: 110px;"
+              :disable="cardDialog.data.uid == null"
+              type="submit"
+              >Create Card</q-btn
+            >
+            <q-btn v-close-popup flat color="grey" class="q-ml-auto"
+              >Cancel</q-btn
+            >
+          </div>
+        </q-form>
+      </div>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="qrCodeDialog.show" position="top">
+    <q-card v-if="qrCodeDialog.data" class="q-pa-lg lnbits__dialog-card">
+      <div class="col q-mt-lg text-center">
+        <lnbits-qrcode
+          :value="qrCodeDialog.data.link"
+          class="rounded-borders"
+          v-show="!qrCodeDialog.wipe"
+        ></lnbits-qrcode>
+        <p class="text-center" v-show="!qrCodeDialog.wipe">
+          (QR for <strong>create</strong> the card in
+          <a
+            class="text-secondary"
+            href="https://play.google.com/store/apps/details?id=com.lightningnfcapp"
+            target="_blank"
+            style="color: inherit"
+            >Boltcard NFC Card Creator</a
+          >)
+        </p>
+        <lnbits-qrcode
+          :value="qrCodeDialog.data_wipe"
+          class="rounded-borders"
+          v-show="qrCodeDialog.wipe"
+        ></lnbits-qrcode>
+        <p class="text-center" v-show="qrCodeDialog.wipe">
+          (QR for <strong>wipe</strong> the card in
+          <a
+            class="text-secondary"
+            href="https://play.google.com/store/apps/details?id=com.lightningnfcapp"
+            target="_blank"
+            style="color: inherit"
+            >Boltcard NFC Card Creator</a
+          >)
+        </p>
+      </div>
+      <div class="col q-mt-md q-mb-md text-center">
+        <q-btn-toggle
+          v-model="qrCodeDialog.wipe"
+          rounded
+          unelevated
+          toggle-color="primary"
+          color="white"
+          text-color="primary"
+          :options="[
+            {label: 'Create', value: false},
+            {label: 'Wipe', value: true}
+          ]"
+        />
+      </div>
+      <p style="word-break: break-all">
+        <strong>Name: </strong><span v-text="qrCodeDialog.data.name"></span
+        ><br />
+        <strong>UID: </strong> <span v-text="qrCodeDialog.data.uid"></span
+        ><br />
+        <strong>External ID:</strong>
+        <span v-text="qrCodeDialog.data.external_id"></span><br />
+        <strong>Lock key (K0):</strong>
+        <span v-text="qrCodeDialog.data.k0"></span><br />
+        <strong>Meta key (K1 & K3):</strong>
+        <span v-text="qrCodeDialog.data.k1"></span><br />
+        <strong>File key (K2 & K4):</strong>
+        <span v-text="qrCodeDialog.data.k2"></span><br />
+      </p>
+      <p>
+        Always backup all keys that you're trying to write on the card. Without
+        them you may not be able to change them in the future!
+      </p>
+      <q-btn
+        unelevated
+        outline
+        color="grey"
+        @click="copyText(qrCodeDialog.data.link)"
+        label="Create link"
+        v-show="!qrCodeDialog.wipe"
+      >
+        <q-tooltip>Click to copy, then paste to NFC Card Creator</q-tooltip>
+      </q-btn>
+      <q-btn
+        unelevated
+        outline
+        color="grey"
+        @click="copyText(qrCodeDialog.data_wipe)"
+        label="Wipe data"
+        v-show="qrCodeDialog.wipe"
+      >
+        <q-tooltip>Click to copy, then paste to NFC Card Creator</q-tooltip>
+      </q-btn>
+      <q-btn
+        unelevated
+        outline
+        color="red"
+        @click="deleteCard(qrCodeDialog.data.id)"
+        label="Delete card"
+        v-show="qrCodeDialog.wipe"
+        v-close-popup
+      >
+        <q-tooltip>Backup the keys, or wipe the card first!</q-tooltip>
+      </q-btn>
+      <div class="row q-mt-lg q-gutter-sm">
+        <q-btn v-close-popup flat color="grey" class="q-ml-auto">Close</q-btn>
+      </div>
+    </q-card>
+  </q-dialog>
+
+  <!-- Add QR code dialog for app download -->
+  <q-dialog v-model="appQrDialog.show" position="top">
+    <q-card class="q-pa-lg lnbits__dialog-card">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="col text-h6">
+          <img src="/boltt/static/image/boltt-icon.png" style="height: 24px; vertical-align: middle; margin-right: 8px;">
+          BOLTT App
+        </div>
+        <q-btn icon="close" flat round dense v-close-popup color="positive" />
+      </q-card-section>
+      <div class="col q-mt-lg text-center">
+        <lnbits-qrcode
+          :value="appQrDialog.link"
+          :size="300"
+          class="rounded-borders"
+        ></lnbits-qrcode>
+        <p class="text-center q-mt-md">
+          Scan this QR code with your phone to download the BOLTT App
+        </p>
+        <div class="row justify-center q-gutter-md">
+          <q-btn
+            outline
+            color="primary"
+            @click="console.log('Link value:', appQrDialog.link); copyText(appQrDialog.link)"
+          >
+            Copy Link
+          </q-btn>
+          <q-btn
+            outline
+            color="primary"
+            type="a"
+            :href="appQrDialog.link"
+            target="_blank"
+          >
+            Open Link
+          </q-btn>
+        </div>
+      </div>
+    </q-card>
+  </q-dialog>
+
+</div>
+
+{% endblock %} {% block scripts %} {{ window_vars(user) }}
+<script src="{{ static_url_for('boltt/static', path='js/index.js') }}"></script>
+{% endblock %}
