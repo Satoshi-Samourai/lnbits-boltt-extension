@@ -1,6 +1,6 @@
 import asyncio
 
-from lnbits.core.crud import update_payment_details, update_payment_extra
+from lnbits.core.crud import update_payment, update_payment_extra
 from lnbits.core.models import Payment
 from lnbits.tasks import register_invoice_listener
 
