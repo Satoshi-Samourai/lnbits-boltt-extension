@@ -20,7 +20,7 @@ async def m001_initial(db):
             uid TEXT NOT NULL UNIQUE,
             external_id TEXT NOT NULL UNIQUE,
             counter INT NOT NULL DEFAULT 0,
-            verification_limit TEXT NOT NULL,
+            tx_limit TEXT NOT NULL,
             daily_limit TEXT NOT NULL,
             enable BOOL NOT NULL,
             k0 TEXT NOT NULL DEFAULT '00000000000000000000000000000000',
@@ -66,4 +66,34 @@ async def m001_initial(db):
         + """
         );
     """
+    )
+
+async def m002_rename_tx_limit(db):
+    """Rename tx_limit column to verification_limit."""
+    # First create new column
+    await db.execute(
+        """
+        ALTER TABLE boltt.cards ADD COLUMN verification_limit TEXT;
+        """
+    )
+    
+    # Copy data from old column to new column
+    await db.execute(
+        """
+        UPDATE boltt.cards SET verification_limit = tx_limit;
+        """
+    )
+    
+    # Make new column NOT NULL after data is copied
+    await db.execute(
+        """
+        ALTER TABLE boltt.cards ALTER COLUMN verification_limit SET NOT NULL;
+        """
+    )
+    
+    # Drop old column
+    await db.execute(
+        """
+        ALTER TABLE boltt.cards DROP COLUMN tx_limit;
+        """
     )

@@ -58,11 +58,33 @@ async def create_card(data: CreateCardData, wallet_id: str) -> Card:
 
 
 async def update_card(card_id: str, data: CreateCardData) -> Card:
-    card = Card(
-        id=card_id,
-        **data.dict(),
+    await db.execute(
+        """
+        UPDATE boltt.cards
+        SET card_name = :card_name,
+            counter = :counter,
+            verification_limit = :verification_limit,
+            daily_limit = :daily_limit,
+            enable = :enable,
+            k0 = :k0,
+            k1 = :k1,
+            k2 = :k2
+        WHERE id = :id
+        """,
+        {
+            "card_name": data.card_name,
+            "counter": data.counter,
+            "verification_limit": data.verification_limit,
+            "daily_limit": data.daily_limit,
+            "enable": data.enable,
+            "k0": data.k0,
+            "k1": data.k1,
+            "k2": data.k2,
+            "id": card_id,
+        },
     )
-    await db.update("boltt.cards", card)
+    card = await get_card(card_id)
+    assert card, "Updated card couldn't be retrieved"
     return card
 
 
