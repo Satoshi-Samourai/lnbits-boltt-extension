@@ -34,7 +34,7 @@ async def api_cards(
     return await get_cards(wallet_ids)
 
 
-def validate_card(data: CreateCardData):
+async def validate_card(data: CreateCardData):
     try:
         if len(bytes.fromhex(data.uid)) != 7:
             raise HTTPException(
@@ -64,14 +64,14 @@ def validate_card(data: CreateCardData):
 @boltt_api_router.put(
     "/api/v1/cards/{card_id}",
     status_code=HTTPStatus.OK,
-    dependencies=[Depends(validate_card)],
+    response_model=Card,
 )
 async def api_card_update(
     data: CreateCardData,
     card_id: str,
     wallet: WalletTypeInfo = Depends(require_admin_key),
 ) -> Card:
-
+    await validate_card(data)
     card = await get_card(card_id)
     if not card:
         raise HTTPException(
@@ -93,12 +93,13 @@ async def api_card_update(
 @boltt_api_router.post(
     "/api/v1/cards",
     status_code=HTTPStatus.CREATED,
-    dependencies=[Depends(validate_card)],
+    response_model=Card,
 )
 async def api_card_create(
     data: CreateCardData,
     wallet: WalletTypeInfo = Depends(require_admin_key),
 ) -> Card:
+    await validate_card(data)
     check_uid = await get_card_by_uid(data.uid)
     if check_uid:
         raise HTTPException(
