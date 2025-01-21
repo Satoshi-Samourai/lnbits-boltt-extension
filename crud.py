@@ -23,7 +23,7 @@ async def create_card(data: CreateCardData, wallet_id: str) -> Card:
             wallet,
             card_name,
             counter,
-            tx_limit,
+            verification_limit,
             daily_limit,
             enable,
             k0,
@@ -33,7 +33,7 @@ async def create_card(data: CreateCardData, wallet_id: str) -> Card:
         )
         VALUES (
             :id, :uid, :external_id, :wallet, :card_name, :counter,
-            :tx_limit, :daily_limit, :enable, :k0, :k1, :k2, :otp
+            :verification_limit, :daily_limit, :enable, :k0, :k1, :k2, :otp
         )
         """,
         {
@@ -43,7 +43,7 @@ async def create_card(data: CreateCardData, wallet_id: str) -> Card:
             "wallet": wallet_id,
             "card_name": data.card_name,
             "counter": data.counter,
-            "tx_limit": data.tx_limit,
+            "verification_limit": data.verification_limit,
             "daily_limit": data.daily_limit,
             "enable": True,
             "k0": data.k0,

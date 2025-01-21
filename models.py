@@ -17,10 +17,8 @@ class Card(BaseModel):
     uid: str
     external_id: str
     counter: int
-    # TODO: database column is TEXT should be INT
-    tx_limit: str
-    # TODO: database column is TEXT should be INT
-    daily_limit: str
+    verification_limit: str  # Database column is TEXT
+    daily_limit: str  # Database column is TEXT
     enable: bool
     k0: str
     k1: str
@@ -45,7 +43,7 @@ class CreateCardData(BaseModel):
     card_name: str = Query(...)
     uid: str = Query(...)
     counter: int = Query(0)
-    tx_limit: int = Query(0)
+    verification_limit: int = Query(0)
     daily_limit: int = Query(0)
     enable: bool = Query(True)
     k0: str = Query(ZERO_KEY)

@@ -1,14 +1,26 @@
-async def m001_initial(db):
+async def m000_create_migrations_table(db):
+    """Create the migrations table."""
     await db.execute(
         """
-        CREATE TABLE boltt.cards (
+        CREATE TABLE IF NOT EXISTS boltt.dbversions (
+            db TEXT PRIMARY KEY,
+            version INTEGER NOT NULL
+        );
+        """
+    )
+
+async def m001_initial(db):
+    """Create initial tables."""
+    await db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS boltt.cards (
             id TEXT PRIMARY KEY UNIQUE,
             wallet TEXT NOT NULL,
             card_name TEXT NOT NULL,
             uid TEXT NOT NULL UNIQUE,
             external_id TEXT NOT NULL UNIQUE,
             counter INT NOT NULL DEFAULT 0,
-            tx_limit TEXT NOT NULL,
+            verification_limit TEXT NOT NULL,
             daily_limit TEXT NOT NULL,
             enable BOOL NOT NULL,
             k0 TEXT NOT NULL DEFAULT '00000000000000000000000000000000',
@@ -27,7 +39,7 @@ async def m001_initial(db):
 
     await db.execute(
         f"""
-        CREATE TABLE boltt.hits (
+        CREATE TABLE IF NOT EXISTS boltt.hits (
             id TEXT PRIMARY KEY UNIQUE,
             card_id TEXT NOT NULL,
             ip TEXT NOT NULL,
@@ -45,7 +57,7 @@ async def m001_initial(db):
 
     await db.execute(
         f"""
-        CREATE TABLE boltt.refunds (
+        CREATE TABLE IF NOT EXISTS boltt.refunds (
             id TEXT PRIMARY KEY UNIQUE,
             hit_id TEXT NOT NULL,
             refund_amount {db.big_int} NOT NULL,
