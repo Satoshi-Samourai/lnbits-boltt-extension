@@ -20,14 +20,10 @@ window.app = Vue.createApp({
           wallet: '',
           card_name: '',
           uid: null,
-          k0: null,
-          k1: null,
-          k2: null,
           counter: 0,
-          verification_limit: null,
-          daily_limit: null,
-          pin: null,
-          confirmPin: null
+          verification_limit: 0,
+          daily_limit: 0,
+          enable: true
         },
         temp: {}
       },
@@ -158,31 +154,23 @@ window.app = Vue.createApp({
     }
   },
   computed: {
-    showPinFields() {
-      const verificationLimit = parseInt(this.cardDialog.data.verification_limit) || 0;
-      const dailyLimit = parseInt(this.cardDialog.data.daily_limit) || 0;
-      return dailyLimit > verificationLimit;
-    }
   },
   watch: {
-    'cardDialog.data.daily_limit': function(newVal) {
-      const verificationLimit = parseInt(this.cardDialog.data.verification_limit) || 0;
-      const dailyLimit = parseInt(newVal) || 0;
-      
-      // Clear PINs if Daily Limit is cleared or less than/equal to Verification Limit (when Verification Limit is set)
-      if (dailyLimit === 0 || (verificationLimit > 0 && dailyLimit <= verificationLimit)) {
-        this.cardDialog.data.pin = null;
-        this.cardDialog.data.confirmPin = null;
+    'cardDialog.data.verification_limit': function(newVal) {
+      if (newVal > this.cardDialog.data.daily_limit) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'Verification limit cannot be higher than daily limit',
+          timeout: 5000
+        })
+        // Reset to daily limit if it's higher
+        this.cardDialog.data.verification_limit = this.cardDialog.data.daily_limit
       }
     },
-    'cardDialog.data.verification_limit': function(newVal) {
-      const verificationLimit = parseInt(newVal) || 0;
-      const dailyLimit = parseInt(this.cardDialog.data.daily_limit) || 0;
-      
-      // Clear PINs if Verification Limit is set and greater than or equal to Daily Limit
-      if (verificationLimit > 0 && dailyLimit > 0 && dailyLimit <= verificationLimit) {
-        this.cardDialog.data.pin = null;
-        this.cardDialog.data.confirmPin = null;
+    'cardDialog.data.daily_limit': function(newVal) {
+      // If verification limit is higher than new daily limit, adjust it down
+      if (this.cardDialog.data.verification_limit > newVal) {
+        this.cardDialog.data.verification_limit = newVal
       }
     }
   },
@@ -269,23 +257,8 @@ window.app = Vue.createApp({
         link: window.location.origin + '/boltt/api/v1/auth?a=' + card.otp,
         name: card.card_name,
         uid: card.uid,
-        external_id: card.external_id,
-        k0: card.k0,
-        k1: card.k1,
-        k2: card.k2,
-        k3: card.k1,
-        k4: card.k2
+        external_id: card.external_id
       }
-      this.qrCodeDialog.data_wipe = JSON.stringify({
-        action: 'wipe',
-        k0: card.k0,
-        k1: card.k1,
-        k2: card.k2,
-        k3: card.k1,
-        k4: card.k2,
-        uid: card.uid,
-        version: 1
-      })
       this.qrCodeDialog.wipe = wipe
       this.qrCodeDialog.show = true
     },
@@ -295,39 +268,15 @@ window.app = Vue.createApp({
     },
     addCardOpen() {
       this.cardDialog.show = true
-      this.generateKeys()
-    },
-    generateKeys() {
-      const genRandomHexBytes = size =>
-        crypto
-          .getRandomValues(new Uint8Array(size))
-          .reduce((acc, i) => acc + i.toString(16).padStart(2, '0'), '')
-
-      debugcard =
-        typeof this.cardDialog.data.card_name === 'string' &&
-        this.cardDialog.data.card_name.search('debug') > -1
-
-      this.cardDialog.data.k0 = debugcard
-        ? '11111111111111111111111111111111'
-        : genRandomHexBytes(16)
-
-      this.cardDialog.data.k1 = debugcard
-        ? '22222222222222222222222222222222'
-        : genRandomHexBytes(16)
-
-      this.cardDialog.data.k2 = debugcard
-        ? '33333333333333333333333333333333'
-        : genRandomHexBytes(16)
     },
     closeFormDialog() {
       this.cardDialog.data = {}
     },
     sendFormData() {
-      let wallet = _.findWhere(this.g.user.wallets, {
-        id: this.cardDialog.data.wallet
-      })
-      let data = this.cardDialog.data
-      if (data.id) {
+      const wallet = this.g.user.wallets[0]
+      const data = this.cardDialog.data
+
+      if (this.cardDialog.temp?.id) {
         this.updateCard(wallet, data)
       } else {
         this.createCard(wallet, data)
@@ -345,36 +294,33 @@ window.app = Vue.createApp({
     },
     updateCardDialog(formId) {
       var card = _.findWhere(this.cards, {id: formId})
+      // Find the wallet that owns this card
+      const cardWallet = this.g.user.wallets.find(w => w.id === card.wallet)
+      if (!cardWallet) {
+        this.$q.notify({
+          type: 'negative',
+          message: 'Card belongs to a different wallet',
+          timeout: 5000
+        })
+        return
+      }
+      this.cardDialog.temp = {id: formId, wallet: cardWallet}
       this.cardDialog.data = _.clone(card)
-
-      this.cardDialog.temp.k0 = this.cardDialog.data.k0
-      this.cardDialog.temp.k1 = this.cardDialog.data.k1
-      this.cardDialog.temp.k2 = this.cardDialog.data.k2
 
       this.cardDialog.show = true
     },
     updateCard(wallet, data) {
-      if (
-        this.cardDialog.temp.k0 != data.k0 ||
-        this.cardDialog.temp.k1 != data.k1 ||
-        this.cardDialog.temp.k2 != data.k2
-      ) {
-        data.prev_k0 = this.cardDialog.temp.k0
-        data.prev_k1 = this.cardDialog.temp.k1
-        data.prev_k2 = this.cardDialog.temp.k2
-      }
-
+      const cardId = this.cardDialog.temp.id
+      const cardWallet = this.cardDialog.temp.wallet
       LNbits.api
         .request(
           'PUT',
-          '/boltt/api/v1/cards/' + data.id,
-          wallet.adminkey,
+          '/boltt/api/v1/cards/' + cardId,
+          cardWallet.adminkey,  // Use the correct wallet's admin key
           data
         )
         .then(response => {
-          this.cards = _.reject(this.cards, function (obj) {
-            return obj.id == data.id
-          })
+          this.cards = _.reject(this.cards, obj => obj.id === cardId)
           this.cards.push(mapCards(response.data))
           this.cardDialog.show = false
           this.cardDialog.data = {}
@@ -406,12 +352,6 @@ window.app = Vue.createApp({
     },
     deleteCard(cardId) {
       let cards = _.findWhere(this.cards, {id: cardId})
-
-      Quasar.exportFile(
-        cards.card_name + '.json',
-        this.qrCodeDialog.data_wipe,
-        'application/json'
-      )
 
       LNbits.utils
         .confirmDialog(

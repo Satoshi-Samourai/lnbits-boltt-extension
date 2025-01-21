@@ -165,7 +165,7 @@
             </q-item-section>
             <q-item-section>
               <q-item-label class="text-white">
-                The BOLTT App is required to verify higher-value transactions (Limit 1: tap and Limit 2: PIN & tap)
+                The BOLTT App is required to verify higher-value transactions that exceed the verification limit.
               </q-item-label>
             </q-item-section>
           </q-item>
@@ -301,13 +301,13 @@
             <q-input
               filled
               dense
-              v-model.number="cardDialog.data.verification_limit"
+              v-model.number="cardDialog.data.daily_limit"
               type="number"
-              label="Verification limit (sats) *"
+              label="Daily limit (sats) *"
             >
               <template v-slot:append>
                 <q-icon name="help_outline">
-                  <q-tooltip>Maximum amount for transactions requiring card tap confirmation</q-tooltip>
+                  <q-tooltip>Maximum amount allowed per day</q-tooltip>
                 </q-icon>
               </template>
             </q-input>
@@ -317,60 +317,23 @@
             <q-input
               filled
               dense
-              v-model.number="cardDialog.data.daily_limit"
+              v-model.number="cardDialog.data.verification_limit"
               type="number"
-              label="Daily limit (sats) *"
+              label="Verification limit (sats) *"
+              :error="cardDialog.data.verification_limit > cardDialog.data.daily_limit"
+              :error-message="cardDialog.data.verification_limit > cardDialog.data.daily_limit ? 'Cannot be higher than daily limit' : ''"
+              :rules="[
+                val => val >= 0 || 'Must be 0 or greater',
+                val => val <= cardDialog.data.daily_limit || 'Cannot exceed daily limit'
+              ]"
             >
               <template v-slot:append>
                 <q-icon name="help_outline">
-                  <q-tooltip>Maximum amount that can be spent per day. If higher than verification limit, PIN will be required.</q-tooltip>
+                  <q-tooltip>Amounts higher than verification limit require card tap in BOLTT App</q-tooltip>
                 </q-icon>
-              </template>
-              <template v-slot:hint v-if="cardDialog.data.daily_limit && cardDialog.data.verification_limit && cardDialog.data.daily_limit <= cardDialog.data.verification_limit">
-                Daily limit must be higher than verification limit to require PIN
               </template>
             </q-input>
           </div>
-
-          <div class="q-mb-md" v-if="showPinFields">
-            <div class="row q-col-gutter-md">
-              <div class="col-6">
-                <q-input
-                  filled
-                  dense
-                  v-model="cardDialog.data.pin"
-                  type="password"
-                  label="PIN *"
-                  :rules="[
-                    val => val !== null || 'PIN is required when daily limit > verification limit',
-                    val => val === cardDialog.data.confirmPin || 'PINs do not match'
-                  ]"
-                >
-                  <template v-slot:append>
-                    <q-icon name="help_outline">
-                      <q-tooltip>PIN is required when daily limit is higher than verification limit</q-tooltip>
-                    </q-icon>
-                  </template>
-                </q-input>
-              </div>
-              <div class="col-6">
-                <q-input
-                  filled
-                  dense
-                  v-model="cardDialog.data.confirmPin"
-                  type="password"
-                  label="Confirm PIN *"
-                  :rules="[
-                    val => val !== null || 'Please confirm PIN',
-                    val => val === cardDialog.data.pin || 'PINs do not match'
-                  ]"
-                >
-                </q-input>
-              </div>
-            </div>
-          </div>
-
-          <div style="height: 16px;"></div>
 
           <div class="q-mb-md">
             <div class="row q-col-gutter-md">
@@ -396,11 +359,12 @@
               </div>
             </div>
           </div>
+
           <div class="q-mb-md">
             <q-toggle
               v-model="toggleAdvanced"
               label="Show advanced options"
-            ></q-toggle>
+            />
           </div>
 
           <div v-show="toggleAdvanced" class="q-gutter-y-md">
@@ -410,10 +374,9 @@
                 dense
                 v-model="cardDialog.data.k0"
                 type="text"
-                label="Card Auth key (K0)"
-                hint="Used to authentificate with the card (16 bytes in HEX). "
-                @randomkey
-              ></q-input>
+                label="k0"
+              >
+              </q-input>
             </div>
             <div class="q-mb-md">
               <q-input
@@ -421,9 +384,9 @@
                 dense
                 v-model="cardDialog.data.k1"
                 type="text"
-                label="Card Meta key (K1)"
-                hint="Used for encypting of the message (16 bytes in HEX)."
-              ></q-input>
+                label="k1"
+              >
+              </q-input>
             </div>
             <div class="q-mb-md">
               <q-input
@@ -431,60 +394,37 @@
                 dense
                 v-model="cardDialog.data.k2"
                 type="text"
-                label="Card File key (K2)"
-                hint="Used for CMAC of the message (16 bytes in HEX)."
-              ></q-input>
-            </div>
-            <div class="q-mb-md">
-              <q-input
-                filled
-                dense
-                v-model.number="cardDialog.data.counter"
-                type="number"
-                label="Initial counter"
+                label="k2"
               >
-                <q-tooltip class="bg-grey-8" anchor="bottom left" self="top left"
-                  >Zero if you don't know.</q-tooltip
-                >
               </q-input>
             </div>
-            <div class="q-mb-md">
-              <q-btn
-                unelevated
-                color="primary"
-                class="q-ml-auto"
-                @click="generateKeys"
-                >Generate keys</q-btn
-              >
+            <div class="row q-col-gutter-md">
+              <div class="col">
+                <q-btn
+                  outline
+                  color="primary"
+                  @click="generateKeys"
+                  class="q-mb-lg"
+                  >Generate Keys</q-btn
+                >
+              </div>
             </div>
           </div>
+
           <div class="row q-mt-lg">
-            <q-btn
-              v-if="cardDialog.data.id"
-              unelevated
-              color="primary"
-              @click="deleteCard"
-              >Delete Card</q-btn
-            >
-            <q-btn
-              v-if="cardDialog.data.id"
-              unelevated
-              color="primary"
-              style="min-width: 110px;"
-              :disable="cardDialog.data.uid == null"
-              type="submit"
-              class="q-ml-sm"
-              >Update Card</q-btn
-            >
             <q-btn
               v-if="!cardDialog.data.id"
               unelevated
               color="primary"
-              style="min-width: 110px;"
-              :disable="cardDialog.data.uid == null"
+              :disable="!cardDialog.data.wallet"
               type="submit"
-              >Create Card</q-btn
-            >
+            >Create card</q-btn>
+            <q-btn
+              v-else
+              unelevated
+              color="primary"
+              type="submit"
+            >Update card</q-btn>
             <q-btn v-close-popup flat color="grey" class="q-ml-auto"
               >Cancel</q-btn
             >
