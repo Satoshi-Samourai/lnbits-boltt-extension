@@ -24,9 +24,8 @@ window.app = Vue.createApp({
           k1: null,
           k2: null,
           counter: 0,
+          verification_limit: null,
           daily_limit: null,
-          limit1: null,
-          limit2: null,
           pin: null,
           confirmPin: null
         },
@@ -57,15 +56,15 @@ window.app = Vue.createApp({
             field: 'wallet'
           },
           {
-            name: 'tx_limit',
+            name: 'verification_limit',
             align: 'left',
-            label: 'Max tx',
-            field: 'tx_limit'
+            label: 'Verification Limit',
+            field: 'verification_limit'
           },
           {
             name: 'daily_limit',
             align: 'left',
-            label: 'Daily tx limit',
+            label: 'Daily Limit',
             field: 'daily_limit'
           }
         ],
@@ -160,28 +159,28 @@ window.app = Vue.createApp({
   },
   computed: {
     showPinFields() {
-      const limit1 = parseInt(this.cardDialog.data.limit1) || 0;
-      const limit2 = parseInt(this.cardDialog.data.limit2) || 0;
-      return limit2 > 0 && (limit1 === 0 || limit2 > limit1);
+      const verificationLimit = parseInt(this.cardDialog.data.verification_limit) || 0;
+      const dailyLimit = parseInt(this.cardDialog.data.daily_limit) || 0;
+      return dailyLimit > verificationLimit;
     }
   },
   watch: {
-    'cardDialog.data.limit2': function(newVal) {
-      const limit1 = parseInt(this.cardDialog.data.limit1) || 0;
-      const limit2 = parseInt(newVal) || 0;
+    'cardDialog.data.daily_limit': function(newVal) {
+      const verificationLimit = parseInt(this.cardDialog.data.verification_limit) || 0;
+      const dailyLimit = parseInt(newVal) || 0;
       
-      // Clear PINs if Limit2 is cleared or less than/equal to Limit1 (when Limit1 is set)
-      if (limit2 === 0 || (limit1 > 0 && limit2 <= limit1)) {
+      // Clear PINs if Daily Limit is cleared or less than/equal to Verification Limit (when Verification Limit is set)
+      if (dailyLimit === 0 || (verificationLimit > 0 && dailyLimit <= verificationLimit)) {
         this.cardDialog.data.pin = null;
         this.cardDialog.data.confirmPin = null;
       }
     },
-    'cardDialog.data.limit1': function(newVal) {
-      const limit1 = parseInt(newVal) || 0;
-      const limit2 = parseInt(this.cardDialog.data.limit2) || 0;
+    'cardDialog.data.verification_limit': function(newVal) {
+      const verificationLimit = parseInt(newVal) || 0;
+      const dailyLimit = parseInt(this.cardDialog.data.daily_limit) || 0;
       
-      // Clear PINs if Limit1 is set and greater than or equal to Limit2
-      if (limit1 > 0 && limit2 > 0 && limit2 <= limit1) {
+      // Clear PINs if Verification Limit is set and greater than or equal to Daily Limit
+      if (verificationLimit > 0 && dailyLimit > 0 && dailyLimit <= verificationLimit) {
         this.cardDialog.data.pin = null;
         this.cardDialog.data.confirmPin = null;
       }

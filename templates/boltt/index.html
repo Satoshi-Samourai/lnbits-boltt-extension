@@ -301,61 +301,35 @@
             <q-input
               filled
               dense
-              emit-value
-              v-model="cardDialog.data.daily_limit"
+              v-model.number="cardDialog.data.verification_limit"
               type="number"
-              label="Daily limit (sats) *"
+              label="Verification limit (sats) *"
             >
               <template v-slot:append>
                 <q-icon name="help_outline">
-                  <q-tooltip>Maximum amount that can be spent per day</q-tooltip>
+                  <q-tooltip>Maximum amount for transactions requiring card tap confirmation</q-tooltip>
                 </q-icon>
               </template>
             </q-input>
           </div>
 
-          <div style="height: 16px;"></div>
-
-          <!-- BOLTT Security Limits -->
           <div class="q-mb-md">
-            <div class="q-gutter-y-md">
-              <div>
-                <q-input
-                  filled
-                  dense
-                  v-model.number="cardDialog.data.limit1"
-                  type="number"
-                  label="Limit 1 | confirm with card tap *"
-                >
-                  <template v-slot:append>
-                    <q-icon name="help_outline">
-                      <q-tooltip>Maximum amount for transactions requiring card tap confirmation</q-tooltip>
-                    </q-icon>
-                  </template>
-                </q-input>
-              </div>
-              <div>
-                <q-input
-                  filled
-                  dense
-                  v-model.number="cardDialog.data.limit2"
-                  type="number"
-                  label="Limit 2 | PIN & confirm with card tap *"
-                >
-                  <template v-slot:append>
-                    <q-icon name="help_outline">
-                      <q-tooltip>Maximum amount for transactions requiring both PIN and card tap confirmation</q-tooltip>
-                    </q-icon>
-                  </template>
-                  <template v-slot:hint v-if="cardDialog.data.limit2 && cardDialog.data.limit1 && cardDialog.data.limit2 <= cardDialog.data.limit1">
-                    Limit 2 must be higher than Limit 1
-                  </template>
-                  <template v-slot:error>
-                    Limit 2 must be higher than Limit 1
-                  </template>
-                </q-input>
-              </div>
-            </div>
+            <q-input
+              filled
+              dense
+              v-model.number="cardDialog.data.daily_limit"
+              type="number"
+              label="Daily limit (sats) *"
+            >
+              <template v-slot:append>
+                <q-icon name="help_outline">
+                  <q-tooltip>Maximum amount that can be spent per day. If higher than verification limit, PIN will be required.</q-tooltip>
+                </q-icon>
+              </template>
+              <template v-slot:hint v-if="cardDialog.data.daily_limit && cardDialog.data.verification_limit && cardDialog.data.daily_limit <= cardDialog.data.verification_limit">
+                Daily limit must be higher than verification limit to require PIN
+              </template>
+            </q-input>
           </div>
 
           <div class="q-mb-md" v-if="showPinFields">
@@ -366,16 +340,15 @@
                   dense
                   v-model="cardDialog.data.pin"
                   type="password"
-                  label="PIN for BOLTT App *"
-                  mask="####"
+                  label="PIN *"
                   :rules="[
-                    val => !showPinFields || !!val || 'PIN is required when Limit 2 is set',
-                    val => !showPinFields || val.length === 4 || 'PIN must be 4 digits'
+                    val => val !== null || 'PIN is required when daily limit > verification limit',
+                    val => val === cardDialog.data.confirmPin || 'PINs do not match'
                   ]"
                 >
                   <template v-slot:append>
                     <q-icon name="help_outline">
-                      <q-tooltip>Enter a 4-digit PIN to unlock high-value payments in BOLTT App</q-tooltip>
+                      <q-tooltip>PIN is required when daily limit is higher than verification limit</q-tooltip>
                     </q-icon>
                   </template>
                 </q-input>
@@ -387,23 +360,11 @@
                   v-model="cardDialog.data.confirmPin"
                   type="password"
                   label="Confirm PIN *"
-                  mask="####"
-                  :error="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin !== cardDialog.data.confirmPin"
-                  :error-message="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin !== cardDialog.data.confirmPin ? 'PINs do not match' : ''"
                   :rules="[
-                    val => !showPinFields || !!val || 'Confirm PIN is required when Limit 2 is set',
-                    val => !showPinFields || val.length === 4 || 'PIN must be 4 digits',
-                    val => !showPinFields || !cardDialog.data.pin || val === cardDialog.data.pin || 'PINs do not match'
+                    val => val !== null || 'Please confirm PIN',
+                    val => val === cardDialog.data.pin || 'PINs do not match'
                   ]"
                 >
-                  <template v-slot:append>
-                    <q-icon 
-                      :name="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin === cardDialog.data.confirmPin ? 'check_circle' : 'help_outline'" 
-                      :color="cardDialog.data.pin && cardDialog.data.confirmPin && cardDialog.data.pin === cardDialog.data.confirmPin ? 'positive' : 'grey'"
-                    >
-                      <q-tooltip>Re-enter your PIN to confirm</q-tooltip>
-                    </q-icon>
-                  </template>
                 </q-input>
               </div>
             </div>
