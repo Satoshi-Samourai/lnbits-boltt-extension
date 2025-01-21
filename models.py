@@ -39,34 +39,20 @@ class Card(BaseModel):
         return LnurlPayMetadata(json.dumps([["text/plain", self.card_name]]))
 
 
-class CreateCardData:
-    def __init__(
-        self,
-        card_name: str = Query(...),
-        uid: str = Query(...),
-        counter: int = Query(0),
-        verification_limit: int = Query(0),
-        daily_limit: int = Query(0),
-        enable: bool = Query(True),
-        k0: str = Query(ZERO_KEY),
-        k1: str = Query(ZERO_KEY),
-        k2: str = Query(ZERO_KEY),
-        prev_k0: str = Query(ZERO_KEY),
-        prev_k1: str = Query(ZERO_KEY),
-        prev_k2: str = Query(ZERO_KEY),
-    ):
-        self.card_name = card_name
-        self.uid = uid
-        self.counter = counter
-        self.verification_limit = str(verification_limit)  # Convert to string for DB
-        self.daily_limit = str(daily_limit)  # Convert to string for DB
-        self.enable = enable
-        self.k0 = k0
-        self.k1 = k1
-        self.k2 = k2
-        self.prev_k0 = prev_k0
-        self.prev_k1 = prev_k1
-        self.prev_k2 = prev_k2
+class CreateCardData(BaseModel):
+    card_name: str
+    uid: str
+    counter: int = 0
+    verification_limit: int = 0
+    daily_limit: int = 0
+    enable: bool = True
+    k0: str = ZERO_KEY
+    k1: str = ZERO_KEY
+    k2: str = ZERO_KEY
+    prev_k0: str = ZERO_KEY
+    prev_k1: str = ZERO_KEY
+    prev_k2: str = ZERO_KEY
+    otp: str = ZERO_KEY
 
 
 class Hit(BaseModel):
