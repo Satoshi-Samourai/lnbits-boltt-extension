@@ -280,7 +280,7 @@ window.app = Vue.createApp({
       this.cardDialog.data = {}
     },
     sendFormData() {
-      const wallet = this.g.user.wallets[0]
+      const wallet = this.g.wallet
       const data = this.cardDialog.data
 
       if (this.cardDialog.temp?.id) {

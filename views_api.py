@@ -104,9 +104,9 @@ async def api_card_create(
 ) -> Card:
     await validate_card(data)
     check_uid = await get_card_by_uid(data.uid)
-    if check_uid and check_uid.wallet == wallet.wallet.id:
+    if check_uid:
         raise HTTPException(
-            detail="UID already registered in your wallet. Delete registered card and try again.",
+            detail="Card with this UID already exists. Each card must have a unique UID.",
             status_code=HTTPStatus.BAD_REQUEST,
         )
     card = await create_card(wallet_id=wallet.wallet.id, data=data)

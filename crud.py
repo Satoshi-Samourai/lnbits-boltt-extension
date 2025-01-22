@@ -18,7 +18,7 @@ async def create_card(data: CreateCardData, wallet_id: str) -> Card:
 
     await db.execute(
         """
-        INSERT INTO boltt.cards (
+        INSERT INTO cards (
             id,
             uid,
             external_id,
@@ -76,7 +76,7 @@ async def update_card(
 ) -> Card:
     await db.execute(
         """
-        UPDATE boltt.cards
+        UPDATE cards
         SET uid = :uid,
             card_name = :card_name,
             counter = :counter,
@@ -117,14 +117,14 @@ async def get_cards(wallet_ids: list[str]) -> list[Card]:
         return []
     q = ",".join([f"'{wallet_id}'" for wallet_id in wallet_ids])
     return await db.fetchall(
-        f"SELECT * FROM boltt.cards WHERE wallet IN ({q})",
+        f"SELECT * FROM cards WHERE wallet IN ({q})",
         model=Card,
     )
 
 
 async def get_card(card_id: str) -> Optional[Card]:
     return await db.fetchone(
-        "SELECT * FROM boltt.cards WHERE id = :id",
+        "SELECT * FROM cards WHERE id = :id",
         {"id": card_id},
         Card,
     )
@@ -132,7 +132,7 @@ async def get_card(card_id: str) -> Optional[Card]:
 
 async def get_card_by_uid(card_uid: str) -> Optional[Card]:
     return await db.fetchone(
-        "SELECT * FROM boltt.cards WHERE uid = :uid",
+        "SELECT * FROM cards WHERE uid = :uid",
         {"uid": card_uid.upper()},
         Card,
     )
@@ -140,7 +140,7 @@ async def get_card_by_uid(card_uid: str) -> Optional[Card]:
 
 async def get_card_by_external_id(external_id: str) -> Optional[Card]:
     return await db.fetchone(
-        "SELECT * FROM boltt.cards WHERE external_id = :ext_id",
+        "SELECT * FROM cards WHERE external_id = :ext_id",
         {"ext_id": external_id.lower()},
         Card,
     )
@@ -148,7 +148,7 @@ async def get_card_by_external_id(external_id: str) -> Optional[Card]:
 
 async def get_card_by_otp(otp: str) -> Optional[Card]:
     return await db.fetchone(
-        "SELECT * FROM boltt.cards WHERE otp = :otp",
+        "SELECT * FROM cards WHERE otp = :otp",
         {"otp": otp},
         Card,
     )
@@ -156,29 +156,29 @@ async def get_card_by_otp(otp: str) -> Optional[Card]:
 
 async def delete_card(card_id: str) -> None:
     # Delete cards
-    await db.execute("DELETE FROM boltt.cards WHERE id = :id", {"id": card_id})
+    await db.execute("DELETE FROM cards WHERE id = :id", {"id": card_id})
     # Delete hits
     hits = await get_hits([card_id])
     for hit in hits:
-        await db.execute("DELETE FROM boltt.hits WHERE id = :id", {"id": hit.id})
+        await db.execute("DELETE FROM hits WHERE id = :id", {"id": hit.id})
         # Delete refunds
         refunds = await get_refunds([hit.id])
         for refund in refunds:
             await db.execute(
-                "DELETE FROM boltt.refunds WHERE id = :id", {"id": refund.id}
+                "DELETE FROM refunds WHERE id = :id", {"id": refund.id}
             )
 
 
 async def update_card_counter(counter: int, card_id: str):
     await db.execute(
-        "UPDATE boltt.cards SET counter = :counter WHERE id = :id",
+        "UPDATE cards SET counter = :counter WHERE id = :id",
         {"counter": counter, "id": card_id},
     )
 
 
 async def enable_disable_card(enable: bool, card_id: str) -> Optional[Card]:
     await db.execute(
-        "UPDATE boltt.cards SET enable = :enable WHERE id = :id",
+        "UPDATE cards SET enable = :enable WHERE id = :id",
         {"enable": enable, "id": card_id},
     )
     return await get_card(card_id)
@@ -186,14 +186,14 @@ async def enable_disable_card(enable: bool, card_id: str) -> Optional[Card]:
 
 async def update_card_otp(otp: str, card_id: str):
     await db.execute(
-        "UPDATE boltt.cards SET otp = :otp WHERE id = :id",
+        "UPDATE cards SET otp = :otp WHERE id = :id",
         {"otp": otp, "id": card_id},
     )
 
 
 async def get_hit(hit_id: str) -> Optional[Hit]:
     return await db.fetchone(
-        "SELECT * FROM boltt.hits WHERE id = :id",
+        "SELECT * FROM hits WHERE id = :id",
         {"id": hit_id},
         Hit,
     )
@@ -205,14 +205,14 @@ async def get_hits(cards_ids: list[str]) -> list[Hit]:
 
     q = ",".join([f"'{card_id}'" for card_id in cards_ids])
     return await db.fetchall(
-        f"SELECT * FROM boltt.hits WHERE card_id IN ({q})",
+        f"SELECT * FROM hits WHERE card_id IN ({q})",
         model=Hit,
     )
 
 
 async def get_hits_today(card_id: str) -> list[Hit]:
     rows = await db.fetchall(
-        "SELECT * FROM boltt.hits WHERE card_id = :id",
+        "SELECT * FROM hits WHERE card_id = :id",
         {"id": card_id},
         Hit,
     )
@@ -226,7 +226,7 @@ async def get_hits_today(card_id: str) -> list[Hit]:
 
 async def spend_hit(card_id: str, amount: int):
     await db.execute(
-        "UPDATE boltt.hits SET spent = :spent, amount = :amount WHERE id = :id",
+        "UPDATE hits SET spent = :spent, amount = :amount WHERE id = :id",
         {"spent": True, "amount": amount, "id": card_id},
     )
     return await get_hit(card_id)
@@ -236,7 +236,7 @@ async def create_hit(card_id, ip, useragent, old_ctr, new_ctr) -> Hit:
     hit_id = urlsafe_short_hash()
     await db.execute(
         """
-        INSERT INTO boltt.hits (
+        INSERT INTO hits (
             id,
             card_id,
             ip,
@@ -268,7 +268,7 @@ async def create_refund(hit_id, refund_amount) -> Refund:
     refund_id = urlsafe_short_hash()
     await db.execute(
         """
-        INSERT INTO boltt.refunds (
+        INSERT INTO refunds (
             id,
             hit_id,
             refund_amount
@@ -288,7 +288,7 @@ async def create_refund(hit_id, refund_amount) -> Refund:
 
 async def get_refund(refund_id: str) -> Optional[Refund]:
     return await db.fetchone(
-        "SELECT * FROM boltt.refunds WHERE id = :id",
+        "SELECT * FROM refunds WHERE id = :id",
         {"id": refund_id},
         Refund,
     )
@@ -299,6 +299,6 @@ async def get_refunds(hits_ids: list[str]) -> list[Refund]:
         return []
     q = ",".join([f"'{hit_id}'" for hit_id in hits_ids])
     return await db.fetchall(
-        f"SELECT * FROM boltt.refunds WHERE hit_id IN ({q})",
+        f"SELECT * FROM refunds WHERE hit_id IN ({q})",
         model=Refund,
     )
