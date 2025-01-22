@@ -7,6 +7,8 @@ from lnbits.helpers import urlsafe_short_hash
 
 from .models import Card, CreateCardData, Hit, Refund
 
+ZERO_KEY = "0000000000000000000000000000000000000000000000000000000000000000"
+
 db = Database("ext_boltt")
 
 
@@ -68,6 +70,9 @@ async def update_card(
     k0: str,
     k1: str,
     k2: str,
+    prev_k0: str = ZERO_KEY,
+    prev_k1: str = ZERO_KEY,
+    prev_k2: str = ZERO_KEY,
 ) -> Card:
     await db.execute(
         """
@@ -80,7 +85,10 @@ async def update_card(
             enable = :enable,
             k0 = :k0,
             k1 = :k1,
-            k2 = :k2
+            k2 = :k2,
+            prev_k0 = :prev_k0,
+            prev_k1 = :prev_k1,
+            prev_k2 = :prev_k2
         WHERE id = :id
         """,
         {
@@ -93,6 +101,9 @@ async def update_card(
             "k0": k0,
             "k1": k1,
             "k2": k2,
+            "prev_k0": prev_k0,
+            "prev_k1": prev_k1,
+            "prev_k2": prev_k2,
             "id": card_id,
         },
     )
