@@ -286,9 +286,10 @@ window.app = Vue.createApp({
       LNbits.api
         .request('POST', '/boltt/api/v1/cards', wallet.adminkey, data)
         .then(response => {
-          this.cards.push(mapCards(response.data))
           this.cardDialog.show = false
           this.cardDialog.data = {}
+          // Refresh the entire card list
+          this.getCards()
         })
         .catch(LNbits.utils.notifyApiError)
     },
