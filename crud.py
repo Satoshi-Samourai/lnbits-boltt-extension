@@ -57,11 +57,23 @@ async def create_card(data: CreateCardData, wallet_id: str) -> Card:
     return card
 
 
-async def update_card(card_id: str, data: CreateCardData) -> Card:
+async def update_card(
+    card_id: str,
+    uid: str,
+    card_name: str,
+    counter: int,
+    verification_limit: int,
+    daily_limit: int,
+    enable: bool,
+    k0: str,
+    k1: str,
+    k2: str,
+) -> Card:
     await db.execute(
         """
         UPDATE boltt.cards
-        SET card_name = :card_name,
+        SET uid = :uid,
+            card_name = :card_name,
             counter = :counter,
             verification_limit = :verification_limit,
             daily_limit = :daily_limit,
@@ -72,14 +84,15 @@ async def update_card(card_id: str, data: CreateCardData) -> Card:
         WHERE id = :id
         """,
         {
-            "card_name": data.card_name,
-            "counter": data.counter,
-            "verification_limit": data.verification_limit,
-            "daily_limit": data.daily_limit,
-            "enable": data.enable,
-            "k0": data.k0,
-            "k1": data.k1,
-            "k2": data.k2,
+            "uid": uid.upper(),
+            "card_name": card_name,
+            "counter": counter,
+            "verification_limit": verification_limit,
+            "daily_limit": daily_limit,
+            "enable": enable,
+            "k0": k0,
+            "k1": k1,
+            "k2": k2,
             "id": card_id,
         },
     )
