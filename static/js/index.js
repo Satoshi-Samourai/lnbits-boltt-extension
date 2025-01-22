@@ -17,7 +17,7 @@ window.app = Vue.createApp({
       cardDialog: {
         show: false,
         data: {
-          wallet: '',
+          wallet: '',  
           card_name: '',
           uid: null,
           counter: 0,
@@ -274,15 +274,48 @@ window.app = Vue.createApp({
       this.appQrDialog.show = true
     },
     addCardOpen() {
+      // Reset form data completely
+      this.cardDialog.data = {
+        wallet: '',  
+        card_name: '',
+        uid: null,
+        counter: 0,
+        verification_limit: 0,
+        daily_limit: 0,
+        enable: true
+      }
+      this.cardDialog.temp = {}
       this.cardDialog.show = true
     },
     closeFormDialog() {
-      this.cardDialog.data = {}
+      // Reset form data completely on close
+      this.cardDialog.data = {
+        wallet: '',
+        card_name: '',
+        uid: null,
+        counter: 0,
+        verification_limit: 0,
+        daily_limit: 0,
+        enable: true
+      }
+      this.cardDialog.temp = {}
     },
     sendFormData() {
-      const wallet = this.g.wallet
-      const data = this.cardDialog.data
+      // Find wallet using lodash helper like boltcards
+      let wallet = _.findWhere(this.g.user.wallets, {
+        id: this.cardDialog.data.wallet
+      })
+      
+      if (!wallet) {
+        this.$q.notify({
+          type: 'negative',
+          message: 'Please select a wallet',
+          timeout: 5000
+        })
+        return
+      }
 
+      let data = this.cardDialog.data
       if (this.cardDialog.temp?.id) {
         this.updateCard(wallet, data)
       } else {
@@ -293,10 +326,20 @@ window.app = Vue.createApp({
       LNbits.api
         .request('POST', '/boltt/api/v1/cards', wallet.adminkey, data)
         .then(response => {
+          // Add new card to list immediately like boltcards
+          this.cards.push(mapCards(response.data))
           this.cardDialog.show = false
-          this.cardDialog.data = {}
-          // Refresh the entire card list
-          this.getCards()
+          // Reset form data completely
+          this.cardDialog.data = {
+            wallet: '',
+            card_name: '',
+            uid: null,
+            counter: 0,
+            verification_limit: 0,
+            daily_limit: 0,
+            enable: true
+          }
+          this.cardDialog.temp = {}
         })
         .catch(LNbits.utils.notifyApiError)
     },
@@ -324,14 +367,24 @@ window.app = Vue.createApp({
         .request(
           'PUT',
           '/boltt/api/v1/cards/' + cardId,
-          cardWallet.adminkey,  // Use the correct wallet's admin key
+          cardWallet.adminkey,  
           data
         )
         .then(response => {
           this.cards = _.reject(this.cards, obj => obj.id === cardId)
           this.cards.push(mapCards(response.data))
           this.cardDialog.show = false
-          this.cardDialog.data = {}
+          // Reset form data completely
+          this.cardDialog.data = {
+            wallet: '',
+            card_name: '',
+            uid: null,
+            counter: 0,
+            verification_limit: 0,
+            daily_limit: 0,
+            enable: true
+          }
+          this.cardDialog.temp = {}
         })
         .catch(function (error) {
           LNbits.utils.notifyApiError(error)
