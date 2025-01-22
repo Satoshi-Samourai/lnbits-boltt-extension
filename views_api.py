@@ -85,7 +85,10 @@ async def api_card_update(
             detail="UID already registered. Delete registered card and try again.",
             status_code=HTTPStatus.BAD_REQUEST,
         )
-    card = await update_card(card_id, **data.dict())
+    # Exclude otp from the update data
+    update_data = data.dict()
+    update_data.pop('otp', None)
+    card = await update_card(card_id, **update_data)
     assert card, "update_card should always return a card"
     return card
 
