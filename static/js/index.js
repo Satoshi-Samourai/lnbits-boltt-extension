@@ -208,11 +208,14 @@ window.app = Vue.createApp({
       })
     },
     getCards() {
+      // Find the wallet with the highest permission level (admin key)
+      const adminWallet = this.g.user.wallets.find(w => w.adminkey) || this.g.user.wallets[0]
+      
       LNbits.api
         .request(
           'GET',
           '/boltt/api/v1/cards?all_wallets=true',
-          this.g.user.wallets[0].inkey
+          adminWallet.adminkey || adminWallet.inkey
         )
         .then(response => {
           this.cards = response.data.map(function (obj) {
@@ -224,11 +227,13 @@ window.app = Vue.createApp({
         })
     },
     getHits() {
+      const adminWallet = this.g.user.wallets.find(w => w.adminkey) || this.g.user.wallets[0]
+      
       LNbits.api
         .request(
           'GET',
           '/boltt/api/v1/hits?all_wallets=true',
-          this.g.user.wallets[0].inkey
+          adminWallet.adminkey || adminWallet.inkey
         )
         .then(response => {
           this.hits = response.data.map(obj => {
@@ -238,11 +243,13 @@ window.app = Vue.createApp({
         })
     },
     getRefunds() {
+      const adminWallet = this.g.user.wallets.find(w => w.adminkey) || this.g.user.wallets[0]
+      
       LNbits.api
         .request(
           'GET',
           '/boltt/api/v1/refunds?all_wallets=true',
-          this.g.user.wallets[0].inkey
+          adminWallet.adminkey || adminWallet.inkey
         )
         .then(response => {
           this.refunds = response.data.map(obj => {
